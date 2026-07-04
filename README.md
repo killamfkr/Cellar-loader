@@ -1,6 +1,6 @@
 # Missler Media
 
-Official repository for [Missler Media](https://github.com/killamfkr/missler-media).
+Official repository for [Missler Media](https://github.com/killamfkr/Missler-Media).
 
 ## About
 
@@ -11,8 +11,8 @@ Missler Media is a media production and management company. This repository serv
 Clone the repository:
 
 ```bash
-git clone https://github.com/killamfkr/missler-media.git
-cd missler-media
+git clone https://github.com/killamfkr/Missler-Media.git
+cd Missler-Media
 ```
 
 ## Repository Structure

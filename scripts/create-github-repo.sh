@@ -5,14 +5,14 @@
 set -euo pipefail
 
 REPO_OWNER="${REPO_OWNER:-killamfkr}"
-REPO_NAME="missler-media"
+REPO_NAME="Missler-Media"
 
 echo "Creating GitHub repository ${REPO_OWNER}/${REPO_NAME}..."
 gh repo create "${REPO_OWNER}/${REPO_NAME}" \
   --description "Missler Media" \
   --public \
   --source . \
-  --remote missler-media \
+  --remote Missler-Media \
   --push
 
 echo "Done! Repository available at: https://github.com/${REPO_OWNER}/${REPO_NAME}"
