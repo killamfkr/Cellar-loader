@@ -41,7 +41,7 @@ Optional later:
 SSH into ZimaOS **or** use the terminal app, then run:
 
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/killamfkr/Cellar-loader/cursor/mycelium-spore-install-scripts-e843/mycelium-media-stack/zimaos/prepare.sh)"
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/killamfkr/Cellar-loader/main/mycelium-media-stack/zimaos/prepare.sh)"
 ```
 
 Or create folders manually:
@@ -63,7 +63,7 @@ mkdir -p /DATA/AppData/mycelium-media-stack/{mycelium,plex-media/movies,plex-med
    **Or** open the raw file from GitHub:
 
    ```
-   https://raw.githubusercontent.com/killamfkr/Cellar-loader/cursor/mycelium-spore-install-scripts-e843/mycelium-media-stack/zimaos/docker-compose.yml
+   https://raw.githubusercontent.com/killamfkr/Cellar-loader/main/mycelium-media-stack/zimaos/docker-compose.yml
    ```
 
 6. Click **Submit**.
