@@ -2,4 +2,6 @@
 
 ## Mycelium media stack installers
 
-See [`mycelium-media-stack/README.md`](mycelium-media-stack/README.md) for ZimaOS and Unraid install scripts (Mycelium + Spore + Plex + *arr).
+**ZimaOS:** import [`mycelium-media-stack/zimaos/docker-compose.yml`](mycelium-media-stack/zimaos/docker-compose.yml) as a Custom App — see [`zimaos/INSTALL.md`](mycelium-media-stack/zimaos/INSTALL.md).
+
+**Unraid:** see [`mycelium-media-stack/unraid/INSTALL.md`](mycelium-media-stack/unraid/INSTALL.md).

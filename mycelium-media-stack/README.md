@@ -1,97 +1,72 @@
 # Mycelium + Spore + Plex + *arr stack
 
-Self-hosted installer scripts for [Mycelium](https://github.com/corveck79/mycelium) with **Spore** (Plex), plus Radarr, Sonarr, Prowlarr, Byparr, and Seerr.
+Self-hosted TorBox media stack using [Mycelium](https://github.com/corveck79/mycelium) Catbox mode and Spore Plex integration.
 
-Inspired by the [ElfHosted Plex + TorBox + *arr guide](https://docs.elfhosted.com/guides/media/plex-torbox-aars/), but runs on your own hardware using Mycelium's Catbox-style lazy TorBox materialization instead of proprietary CatBox.
+## ZimaOS (recommended — Custom App import)
 
-## What you get
+**Easiest path:** one compose file + UI import.
+
+| File | Purpose |
+|------|---------|
+| [`zimaos/docker-compose.yml`](zimaos/docker-compose.yml) | Paste into ZimaOS **Install a customized app → Import** |
+| [`zimaos/INSTALL.md`](zimaos/INSTALL.md) | Step-by-step setup guide |
+| [`zimaos/prepare.sh`](zimaos/prepare.sh) | Creates `/DATA/AppData/mycelium-media-stack` folders |
+
+### Quick start
+
+```bash
+# Optional: create folders first
+bash mycelium-media-stack/zimaos/prepare.sh
+```
+
+Then in ZimaOS:
+
+1. **+** → **Install a customized app** → **Import** → **Docker Compose**
+2. Paste [`zimaos/docker-compose.yml`](zimaos/docker-compose.yml)
+3. Set `TORBOX_API_KEY`, `TMDB_API_KEY`, `CATBOX_HOST`, `WEBHOOK_SECRET`
+4. **Install** → open Mycelium on port **8088**
+
+Or run the helper:
+
+```bash
+bash mycelium-media-stack/install-zimaos.sh
+```
+
+## Unraid
+
+| File | Purpose |
+|------|---------|
+| [`unraid/docker-compose.yml`](unraid/docker-compose.yml) | Standard compose for Docker Compose Manager / terminal |
+| [`unraid/.env.example`](unraid/.env.example) | Environment template |
+| [`unraid/INSTALL.md`](unraid/INSTALL.md) | Unraid notes |
+| [`install-unraid.sh`](install-unraid.sh) | Automated installer |
+
+```bash
+TORBOX_API_KEY=xxx TMDB_API_KEY=yyy bash install-unraid.sh
+```
+
+## Stack
 
 | Service | Port | Role |
 |---------|------|------|
-| Mycelium | 8088 | TorBox pipeline, Catbox mode, Spore stub library |
-| Plex | 32400 | Media server (Spore transcoder wrapper) |
-| Seerr | 5055 | Request UI |
-| Radarr | 7878 | Movie list management / bulk import into Mycelium |
-| Sonarr | 8989 | TV list management / bulk import into Mycelium |
-| Prowlarr | 9696 | Indexer manager |
-| Byparr | 8191 | Cloudflare bypass for Prowlarr |
+| Mycelium | 8088 | TorBox pipeline, Catbox + Spore |
+| Plex | 32400 | Media server (Spore wrapper auto-installed) |
+| Seerr | 5055 | Requests |
+| Radarr | 7878 | Bulk import / list management |
+| Sonarr | 8989 | Bulk import / list management |
+| Prowlarr | 9696 | Indexers |
+| Byparr | 8191 | Cloudflare bypass |
 
-**Important:** Mycelium is the download/stream engine. Radarr and Sonarr are **not** qBittorrent download clients here — connect them in Mycelium Admin for bulk import, and use Seerr webhooks for ongoing requests.
+**Note:** Mycelium is the download/stream engine. Radarr/Sonarr are not qBittorrent clients in this stack.
 
-## Requirements
+## Management (script install only)
 
-- Docker + Docker Compose v2
-- TorBox Essential or Pro API key
-- TMDB Read Access Token (free)
-- Legal content only; comply with TorBox terms
-
-## ZimaOS install
-
-SSH into your ZimaOS box:
+If you used `install-unraid.sh` or an older script-based ZimaOS install:
 
 ```bash
-git clone <this-repo>
-cd mycelium-media-stack
-TORBOX_API_KEY="your-key" TMDB_API_KEY="your-tmdb-token" bash install-zimaos.sh
+cd <install-dir> && ./manage.sh start|stop|status|logs|urls
 ```
 
-Default install path: `/DATA/AppData/mycelium-media-stack`
+## Legal
 
-## Unraid install
-
-Open the Unraid terminal (or User Scripts):
-
-```bash
-git clone <this-repo>
-cd mycelium-media-stack
-TORBOX_API_KEY="your-key" TMDB_API_KEY="your-tmdb-token" bash install-unraid.sh
-```
-
-Default install path: `/mnt/user/appdata/mycelium-media-stack`
-
-The Unraid installer also adds a **User Scripts** helper if that plugin is installed.
-
-## Management
-
-```bash
-cd <install-dir>
-./manage.sh start|stop|restart|status|logs|update|urls|claim-plex
-```
-
-## Post-install checklist
-
-1. Open `http://<your-ip>:8088` and complete the Mycelium setup wizard.
-2. Claim Plex: get a token from https://www.plex.tv/claim/, set `PLEX_CLAIM` in `.env`, run `./manage.sh restart plex`.
-3. In Plex, add libraries pointing at `/plex-media` (Movies and TV).
-4. Configure Seerr:
-   - Connect Plex at `http://plex:32400`
-   - Connect Radarr `http://radarr:7878` and Sonarr `http://sonarr:8989`
-   - Webhook: `http://mycelium:8088/webhook` with header `X-Webhook-Secret: <from .env>`
-5. In Mycelium Admin → Integration, add Radarr/Sonarr for bulk library import.
-
-## Spore notes
-
-- Spore is **experimental**. Best results on Linux/desktop Plex clients.
-- Android TV / Shield often bypass the transcoder wrapper (see [Mycelium discussion #37](https://github.com/corveck79/mycelium/discussions/37)).
-- The installer patches the upstream Spore wrapper to call `http://mycelium:8088` instead of `127.0.0.1` so Plex can reach Mycelium on a Docker bridge network.
-
-## Uninstall
-
-```bash
-cd <install-dir>
-./manage.sh uninstall
-rm -rf <install-dir>   # optional: removes configs and library stubs
-```
-
-## Files
-
-```
-mycelium-media-stack/
-├── install-zimaos.sh
-├── install-unraid.sh
-├── manage.sh
-├── lib/common.sh
-└── README.md
-```
-
-`docker-compose.yml` and `.env` are generated in the install directory at install time.
+Stream only content you have the right to access. Comply with TorBox terms and copyright law.

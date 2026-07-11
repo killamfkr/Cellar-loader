@@ -1,0 +1,134 @@
+name: mycelium-media-stack
+
+services:
+  mycelium:
+    image: ghcr.io/corveck79/mycelium:latest
+    container_name: mycelium
+    restart: unless-stopped
+    ports:
+      - "8088:8088"
+    environment:
+      PUID: ${PUID:-99}
+      PGID: ${PGID:-100}
+      TZ: ${TZ:-UTC}
+      LISTEN_HOST: 0.0.0.0
+      LISTEN_PORT: 8088
+      MEDIA_PATH: /data/media
+      DB_PATH: /data/requests.db
+      TORBOX_API_KEY: ${TORBOX_API_KEY}
+      TMDB_API_KEY: ${TMDB_API_KEY}
+      CATBOX_MODE: "true"
+      CATBOX_HOST: ${CATBOX_HOST}
+      CATBOX_IDLE_MINUTES: "43200"
+      SPORE_ENABLED: "true"
+      SPORE_MEDIA_PATH: /data/plex-media
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET}
+      SEERR_URL: http://seerr:5055
+      SEERR_API_KEY: ${SEERR_API_KEY:-}
+    volumes:
+      - /mnt/user/appdata/mycelium-media-stack/mycelium:/data
+      - /mnt/user/appdata/mycelium-media-stack/plex-media:/data/plex-media
+    devices:
+      - /dev/dri:/dev/dri
+
+  plex:
+    image: lscr.io/linuxserver/plex:latest
+    container_name: plex
+    restart: unless-stopped
+    depends_on:
+      - mycelium
+    ports:
+      - "32400:32400"
+    environment:
+      PUID: ${PUID:-99}
+      PGID: ${PGID:-100}
+      TZ: ${TZ:-UTC}
+      VERSION: docker
+      PLEX_CLAIM: ${PLEX_CLAIM:-}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        mkdir -p /config/spore
+        if [ ! -f /config/spore/plex_transcoder_wrapper.sh ]; then
+          wget -qO /tmp/spore-wrap.sh https://raw.githubusercontent.com/corveck79/mycelium/main/spore/plex_transcoder_wrapper.sh
+          sed 's|http://127.0.0.1:8088|http://mycelium:8088|g' /tmp/spore-wrap.sh > /config/spore/plex_transcoder_wrapper.sh
+          chmod +x /config/spore/plex_transcoder_wrapper.sh
+        fi
+        if [ ! -f '/usr/lib/plexmediaserver/Plex Transcoder.real' ]; then
+          mv '/usr/lib/plexmediaserver/Plex Transcoder' '/usr/lib/plexmediaserver/Plex Transcoder.real'
+        fi
+        cp /config/spore/plex_transcoder_wrapper.sh '/usr/lib/plexmediaserver/Plex Transcoder'
+        chmod +x '/usr/lib/plexmediaserver/Plex Transcoder'
+        exec /init
+    volumes:
+      - /mnt/user/appdata/mycelium-media-stack/plex:/config
+      - /mnt/user/appdata/mycelium-media-stack/plex-media:/plex-media:ro
+
+  byparr:
+    image: ghcr.io/thephaseless/byparr:latest
+    container_name: byparr
+    restart: unless-stopped
+    ports:
+      - "8191:8191"
+    environment:
+      LOG_LEVEL: info
+      LOG_HTML: "false"
+      TZ: ${TZ:-UTC}
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    restart: unless-stopped
+    depends_on:
+      - byparr
+    ports:
+      - "9696:9696"
+    environment:
+      PUID: ${PUID:-99}
+      PGID: ${PGID:-100}
+      TZ: ${TZ:-UTC}
+    volumes:
+      - /mnt/user/appdata/mycelium-media-stack/prowlarr:/config
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    restart: unless-stopped
+    ports:
+      - "7878:7878"
+    environment:
+      PUID: ${PUID:-99}
+      PGID: ${PGID:-100}
+      TZ: ${TZ:-UTC}
+    volumes:
+      - /mnt/user/appdata/mycelium-media-stack/radarr:/config
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    restart: unless-stopped
+    ports:
+      - "8989:8989"
+    environment:
+      PUID: ${PUID:-99}
+      PGID: ${PGID:-100}
+      TZ: ${TZ:-UTC}
+    volumes:
+      - /mnt/user/appdata/mycelium-media-stack/sonarr:/config
+
+  seerr:
+    image: ghcr.io/seerr-team/seerr:latest
+    container_name: seerr
+    restart: unless-stopped
+    depends_on:
+      - plex
+      - radarr
+      - sonarr
+    ports:
+      - "5055:5055"
+    environment:
+      TZ: ${TZ:-UTC}
+    volumes:
+      - /mnt/user/appdata/mycelium-media-stack/seerr:/app/config
