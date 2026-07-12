@@ -242,7 +242,7 @@ cd "$(dirname "$0")"
 [[ -f .stack-env ]] && source .stack-env
 COMPOSE=(docker compose)
 usage() {
-  echo "Usage: ./manage.sh {start|stop|restart|status|logs|urls|update|claim-plex|test-webhook|plex-scan|check-media|spore-backfill|sync-plex|sync-strm-fallback|fix-perms}"
+  echo "Usage: ./manage.sh {start|stop|restart|status|logs|urls|update|claim-plex|test-webhook|plex-scan|check-media|check-spore|spore-backfill|sync-plex|sync-strm-fallback|fix-perms}"
 }
 pref_file() {
   echo "$(pwd)/plex/Library/Application Support/Plex Media Server/Preferences.xml"
@@ -365,7 +365,35 @@ EOF
     echo "=== Recent Mycelium activity ==="
     docker compose logs mycelium --tail=80 2>/dev/null | grep -iE 'webhook|Added|Failed|wanted|process|Seerr|Spore|error' || true
     echo ""
-    echo "Mycelium library != Plex library. Run ./manage.sh spore-backfill then ./manage.sh plex-scan"
+    echo "Mycelium library != Plex library. Run ./manage.sh sync-plex"
+    ;;
+  check-spore)
+    compose="$(pwd)/docker-compose.yml"
+    echo "=== Spore configuration (not in Mycelium Settings UI) ==="
+    echo "Spore is enabled via docker-compose environment variables only."
+    echo ""
+    if [[ -f "${compose}" ]]; then
+      echo "docker-compose.yml:"
+      grep -E 'SPORE_ENABLED|SPORE_MEDIA_PATH|CATBOX_MODE|CATBOX_LAZY_ADD' "${compose}" || echo "  (missing Spore/Catbox env — re-run setup.sh or add manually)"
+    else
+      echo "Missing ${compose}"
+    fi
+    echo ""
+    echo "Inside Mycelium container:"
+    docker compose exec -T -w /app mycelium python3 - <<'PY' || true
+import config
+import settings
+print(f"  config.SPORE_ENABLED = {config.SPORE_ENABLED}")
+print(f"  config.SPORE_MEDIA_PATH = {config.SPORE_MEDIA_PATH}")
+print(f"  settings SPORE_ENABLED = {settings.get('SPORE_ENABLED', config.SPORE_ENABLED)}")
+print(f"  settings SPORE_MEDIA_PATH = {settings.get('SPORE_MEDIA_PATH', config.SPORE_MEDIA_PATH)}")
+PY
+    echo ""
+    echo "If SPORE_ENABLED is false, add to docker-compose.yml under mycelium:"
+    echo '  SPORE_ENABLED: "true"'
+    echo '  SPORE_MEDIA_PATH: /data/plex-media'
+    echo "Then: docker compose up -d mycelium"
+    echo "Populate Plex: ./manage.sh sync-plex"
     ;;
   spore-backfill)
     script="$(pwd)/spore-backfill.py"

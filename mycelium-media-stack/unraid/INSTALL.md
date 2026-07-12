@@ -110,11 +110,12 @@ cd /mnt/user/appdata/mycelium-media-stack
 
 `sync-plex` runs spore-backfill, fixes permissions, mirrors `.strm` files as a fallback if stub creation fails, then triggers a Plex scan.
 
-Or in Mycelium Admin → **Classic → Maintenance → Spore backfill** (if available).
+**Note:** Mycelium has **no “Spore enabled” toggle in Admin → Settings**. Spore is controlled by `docker-compose.yml` env vars. Run `./manage.sh check-spore` to verify.
 
 ```bash
 cd /mnt/user/appdata/mycelium-media-stack
 ./manage.sh check-media    # compare strm vs stub counts
+./manage.sh check-spore    # verify SPORE_ENABLED in compose + container
 ./manage.sh sync-plex      # backfill stubs + plex scan (preferred)
 ```
 
@@ -138,10 +139,17 @@ The Mycelium **Library** page lists database requests — not files in `plex-med
 
 | Diagnose output | Fix |
 |-----------------|-----|
-| `SPORE_ENABLED (effective): False` | Mycelium Admin → **Settings** → enable **Spore** → restart Mycelium |
+| `config.SPORE_ENABLED = False` | Add `SPORE_ENABLED: "true"` to `docker-compose.yml` → `docker compose up -d mycelium`. There is **no Spore toggle in Mycelium Settings UI**. |
 | `.strm files on disk: 0` | No media files yet. Mycelium Admin → **TorBox library scan**, or re-request the title |
 | `virtual_items in DB: 0` | Request never fully processed — check Mycelium Admin for `failed` / `wanted` status |
-| `movie requests (success): N` but strms = 0 | Processing marked success before `.strm` was written — re-request or run TorBox scan |
+| `plex-media writable: False` | Run `./manage.sh fix-perms` or `./manage.sh sync-plex` (retries as root) |
+
+Verify Spore env:
+
+```bash
+cd /mnt/user/appdata/mycelium-media-stack
+./manage.sh check-spore
+```
 
 Run the diagnostic backfill (prints counts before creating stubs):
 
@@ -154,10 +162,14 @@ docker compose exec -T -w /app mycelium python3 /app/spore-backfill.py
 
 Read the `=== Mycelium Spore diagnose ===` section — it tells you which step failed.
 
-Also confirm in Mycelium Admin → **Settings**:
+Required in `docker-compose.yml` under the `mycelium` service (not in the Settings UI):
 
-- **Spore enabled** = on
-- **Spore media path** = `/data/plex-media`
+```yaml
+SPORE_ENABLED: "true"
+SPORE_MEDIA_PATH: /data/plex-media
+CATBOX_MODE: "true"
+CATBOX_LAZY_ADD: "true"
+```
 
 ## Zilean is down
 
