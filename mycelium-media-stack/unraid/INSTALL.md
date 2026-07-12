@@ -97,9 +97,24 @@ The webhook only **notifies** Mycelium. A movie appears in Plex only after the f
 
 Radarr will stay on "missing" — that is normal. Mycelium does the grab, not Radarr.
 
+### Mycelium library vs Plex library
+
+Mycelium keeps `.strm` files internally at `mycelium/media/movies/` on the host. Plex cannot read those — it needs **Spore stub `.mkv` files** in `plex-media/movies/`.
+
+If a title shows in Mycelium but `plex-media/movies/` is empty, generate the stubs:
+
 ```bash
 cd /mnt/user/appdata/mycelium-media-stack
-./manage.sh check-media    # stubs + recent Mycelium logs
+./manage.sh spore-backfill
+./manage.sh plex-scan
+```
+
+Or in Mycelium Admin → **Classic → Maintenance → Spore backfill** (if available).
+
+```bash
+cd /mnt/user/appdata/mycelium-media-stack
+./manage.sh check-media    # compare strm vs stub counts
+./manage.sh spore-backfill # create missing Plex stubs
 ./manage.sh plex-scan      # force Plex library scan
 ```
 
@@ -112,8 +127,8 @@ In **Mycelium Admin** (`http://192.168.0.100:8088/admin`), confirm the request s
    - Seerr → Settings → General → copy API Key
    - Mycelium Admin → Settings → paste `SEERR_API_KEY`, set `SEERR_URL` = `http://192.168.0.100:5055`
    - `docker compose restart mycelium`
-3. **No TorBox cached release** — Mycelium logs `wanted` or `failed`. Try another title or check TorBox API key.
-4. **Plex not scanned** — Mycelium does not auto-refresh Plex (only Jellyfin). Run `./manage.sh plex-scan`.
+3. **In Mycelium but not in `plex-media/`** — run `./manage.sh spore-backfill` then `./manage.sh plex-scan`. Mycelium stores `.strm` files separately; Plex needs Spore `.mkv` stubs.
+4. **No TorBox cached release** — Mycelium logs `wanted` or `failed`. Try another title or check TorBox API key.
 5. **Wrong Plex library path** — libraries must point to `/plex-media/movies` and `/plex-media/tv` inside Plex.
 6. **Seerr still shows "Processing"** — until Plex has the movie and you **Sync Libraries** in Seerr.
 
