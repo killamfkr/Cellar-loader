@@ -148,8 +148,8 @@ Run the diagnostic backfill (prints counts before creating stubs):
 ```bash
 cd /mnt/user/appdata/mycelium-media-stack
 curl -fsSL https://raw.githubusercontent.com/killamfkr/Cellar-loader/main/mycelium-media-stack/unraid/spore-backfill.py -o spore-backfill.py
-docker compose cp spore-backfill.py mycelium:/tmp/spore-backfill.py
-docker compose exec -T mycelium python3 /tmp/spore-backfill.py
+docker compose cp spore-backfill.py mycelium:/app/spore-backfill.py
+docker compose exec -T -w /app mycelium python3 /app/spore-backfill.py
 ```
 
 Read the `=== Mycelium Spore diagnose ===` section — it tells you which step failed.

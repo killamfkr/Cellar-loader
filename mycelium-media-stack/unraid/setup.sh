@@ -370,12 +370,13 @@ EOF
     script="$(pwd)/spore-backfill.py"
     if [[ ! -f "${script}" ]]; then
       echo "Downloading spore-backfill.py ..."
-      curl -fsSL "https://raw.githubusercontent.com/killamfkr/Cellar-loader/main/mycelium-media-stack/unraid/spore-backfill.py" -o "${script}"
+      curl -fsSL "${REPO_RAW}/unraid/spore-backfill.py" -o "${script}" || \
+        curl -fsSL "https://raw.githubusercontent.com/killamfkr/Cellar-loader/1d32249/mycelium-media-stack/unraid/spore-backfill.py" -o "${script}"
       chmod +x "${script}"
     fi
     echo "Generating Spore .mkv stubs in plex-media ..."
-    docker compose cp "${script}" mycelium:/tmp/spore-backfill.py
-    docker compose exec -T mycelium python3 /tmp/spore-backfill.py || true
+    docker compose cp "${script}" mycelium:/app/spore-backfill.py
+    docker compose exec -T -w /app mycelium python3 /app/spore-backfill.py || true
     echo "Run ./manage.sh plex-scan after stubs appear."
     ;;
   *) usage; exit 1 ;;

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Generate Plex Spore stubs from Mycelium library state.
 
-Mycelium's UI library lists requests from the DB — not necessarily files on
-disk. This script diagnoses that gap and writes .mkv stubs into SPORE_MEDIA_PATH.
+Run inside the Mycelium container with WORKDIR /app, e.g.:
+  docker compose exec -T -w /app mycelium python3 /app/spore-backfill.py
 """
 from __future__ import annotations
 
