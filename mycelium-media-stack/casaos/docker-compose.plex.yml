@@ -1,0 +1,142 @@
+name: mycelium-plex
+
+services:
+  mycelium:
+    image: ghcr.io/corveck79/mycelium:latest
+    container_name: mycelium
+    restart: unless-stopped
+    ports:
+      - target: 8088
+        published: "8088"
+        protocol: tcp
+    environment:
+      PUID: $PUID
+      PGID: $PGID
+      TZ: $TZ
+      LISTEN_HOST: 0.0.0.0
+      LISTEN_PORT: 8088
+      DB_PATH: /data/requests.db
+      MEDIA_PATH: /data/media
+      TORBOX_API_KEY: $TORBOX_API_KEY
+      TORBOX_BASE_URL: https://api.torbox.app/v1/api
+      TMDB_API_KEY: $TMDB_API_KEY
+      CATBOX_MODE: "true"
+      CATBOX_HOST: $CATBOX_HOST
+      CATBOX_IDLE_MINUTES: "43200"
+      SPORE_ENABLED: "true"
+      SPORE_MEDIA_PATH: /data/plex-media
+      WEBHOOK_SECRET: $WEBHOOK_SECRET
+      SEERR_URL: $SEERR_URL
+      SEERR_API_KEY: $SEERR_API_KEY
+      QUALITY_PREFERENCE: 1080p,2160p,720p
+      ALLOW_4K: "true"
+      EXCLUDE_REMUX: "true"
+      EXCLUDE_CAM: "true"
+      PREFER_WEBDL: "true"
+      PREFER_HEVC: "true"
+      MIN_SEEDERS: "3"
+      AUTO_UPGRADE_ENABLED: "true"
+      LOG_LEVEL: INFO
+    volumes:
+      - type: bind
+        source: /DATA/AppData/mycelium-plex/mycelium
+        target: /data
+      - type: bind
+        source: /DATA/AppData/mycelium-plex/plex-media
+        target: /data/plex-media
+    x-casaos:
+      envs:
+        - container: TORBOX_API_KEY
+          description:
+            en_us: TorBox API key from torbox.app Settings API.
+        - container: TMDB_API_KEY
+          description:
+            en_us: TMDB Read Access Token (starts with eyJ).
+        - container: CATBOX_HOST
+          description:
+            en_us: Your NAS LAN URL, e.g. http://192.168.1.50:8088
+        - container: WEBHOOK_SECRET
+          description:
+            en_us: Optional secret for Seerr webhooks.
+        - container: SEERR_URL
+          description:
+            en_us: Optional Seerr URL, e.g. http://192.168.1.50:5055
+        - container: SEERR_API_KEY
+          description:
+            en_us: Optional Seerr API key.
+
+  plex:
+    image: ghcr.io/killamfkr/plex-spore:latest
+    container_name: plex
+    restart: unless-stopped
+    depends_on:
+      - mycelium
+    ports:
+      - target: 32400
+        published: "32400"
+        protocol: tcp
+    environment:
+      PUID: $PUID
+      PGID: $PGID
+      TZ: $TZ
+      VERSION: docker
+      PLEX_CLAIM: $PLEX_CLAIM
+      MYCELIUM_URL: http://mycelium:8088
+    volumes:
+      - type: bind
+        source: /DATA/AppData/mycelium-plex/plex
+        target: /config
+      - type: bind
+        source: /DATA/AppData/mycelium-plex/plex-media
+        target: /plex-media
+    x-casaos:
+      envs:
+        - container: PLEX_CLAIM
+          description:
+            en_us: Optional claim token from plex.tv/claim (expires in ~4 minutes).
+
+x-casaos:
+  app_id: com.corveck79.mycelium-plex
+  architectures:
+    - amd64
+    - arm64
+  main: mycelium
+  author: corveck79
+  developer: corveck79
+  category: Media
+  description:
+    en_us: |
+      Mycelium + Plex Spore in one stack. TorBox-powered library with Catbox lazy
+      streaming and Plex integration. No local media storage. Mycelium on port 8088,
+      Plex on port 32400.
+  tagline:
+    en_us: Mycelium + Plex Spore — TorBox to Plex
+  icon: https://cdn.jsdelivr.net/gh/IceWhaleTech/CasaOS-AppStore@main/Apps/Plex/icon.svg
+  index: /
+  scheme: http
+  port_map: "8088"
+  store_app_id: mycelium-plex
+  tips:
+    before_install:
+      en_us: |
+        **Required**
+
+        1. TorBox API key — torbox.app → Settings → API
+        2. TMDB Read Access Token — themoviedb.org/settings/api (starts with `eyJ`)
+        3. **CATBOX_HOST** — your NAS LAN IP, e.g. `http://192.168.1.50:8088`
+
+        **Folders** (SSH):
+        ```
+        mkdir -p /DATA/AppData/mycelium-plex/{mycelium,plex,plex-media/movies,plex-media/tv}
+        ```
+
+        **After install**
+
+        1. Open Mycelium at port **8088** — complete setup wizard
+        2. Open Plex at port **32400/web** — claim server (optional PLEX_CLAIM)
+        3. Add Plex libraries: `/plex-media/movies` and `/plex-media/tv`
+
+        Spore is experimental. Linux/desktop Plex clients work best.
+        Plex image: ghcr.io/killamfkr/plex-spore (build locally if pull fails).
+  title:
+    en_us: Mycelium + Plex

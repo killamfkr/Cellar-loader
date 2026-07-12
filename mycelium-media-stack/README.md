@@ -1,14 +1,17 @@
 # Mycelium + Spore + Plex + *arr
 
-## Mycelium only (ZimaOS / CasaOS)
+## Mycelium + Plex (ZimaOS / CasaOS)
 
-Single self-contained compose for [corveck79/mycelium](https://github.com/corveck79/mycelium):
+**Single-file install** — Mycelium and Plex Spore in one compose:
 
-- [`casaos/docker-compose.yml`](casaos/docker-compose.yml) — paste into Custom App import
-- [`casaos/README.md`](casaos/README.md) — install guide
+| File | Purpose |
+|------|---------|
+| [`casaos/docker-compose.plex.yml`](casaos/docker-compose.plex.yml) | Mycelium + Plex — paste into Custom App import |
+| [`casaos/docker-compose.yml`](casaos/docker-compose.yml) | Mycelium only (Jellyfin) |
+| [`casaos/README.md`](casaos/README.md) | Install guide |
 
 ```
-https://raw.githubusercontent.com/killamfkr/Cellar-loader/main/mycelium-media-stack/casaos/docker-compose.yml
+https://raw.githubusercontent.com/killamfkr/Cellar-loader/main/mycelium-media-stack/casaos/docker-compose.plex.yml
 ```
 
 ## Full stack (ZimaOS)

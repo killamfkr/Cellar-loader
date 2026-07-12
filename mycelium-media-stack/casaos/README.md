@@ -1,22 +1,25 @@
-# Mycelium — ZimaOS / CasaOS single-file install
+# Mycelium — ZimaOS / CasaOS installs
 
-One self-contained compose for [corveck79/mycelium](https://github.com/corveck79/mycelium). No `.env` file required.
+Self-contained compose files for [corveck79/mycelium](https://github.com/corveck79/mycelium). No `.env` files.
 
-## Install
+## Mycelium + Plex (recommended)
 
-1. SSH (optional) — create folders:
+One import — Mycelium and Plex Spore together.
+
+```
+https://raw.githubusercontent.com/killamfkr/Cellar-loader/main/mycelium-media-stack/casaos/docker-compose.plex.yml
+```
+
+### Install
+
+1. Create folders:
    ```bash
-   mkdir -p /DATA/AppData/mycelium /DATA/Media/mycelium
+   mkdir -p /DATA/AppData/mycelium-plex/{mycelium,plex,plex-media/movies,plex-media/tv}
    ```
 
-2. ZimaOS or CasaOS → **+** → **Install a customized app** → **Import** → **Docker Compose**
+2. **+** → **Install a customized app** → **Import** → paste `docker-compose.plex.yml`
 
-3. Paste [`docker-compose.yml`](./docker-compose.yml) or this URL:
-   ```
-   https://raw.githubusercontent.com/killamfkr/Cellar-loader/main/mycelium-media-stack/casaos/docker-compose.yml
-   ```
-
-4. Set before **Install**:
+3. Set before **Install**:
 
    | Variable | Example |
    |----------|---------|
@@ -24,24 +27,35 @@ One self-contained compose for [corveck79/mycelium](https://github.com/corveck79
    | `TMDB_API_KEY` | `eyJhbGciOi...` |
    | `CATBOX_HOST` | `http://192.168.1.50:8088` |
 
-5. Open `http://<NAS-IP>:8088` and finish the setup wizard.
+4. **Mycelium:** `http://<NAS-IP>:8088` — setup wizard
+5. **Plex:** `http://<NAS-IP>:32400/web` — add libraries at `/plex-media/movies` and `/plex-media/tv`
 
-## Jellyfin
+Optional: set `PLEX_CLAIM` from [plex.tv/claim](https://www.plex.tv/claim) before first Plex start.
 
-Add libraries pointing at the container path `/data/media` (host: `/DATA/Media/mycelium`).
+---
 
-## Optional — Seerr webhook
+## Mycelium only (Jellyfin)
 
-| Variable | Value |
-|----------|-------|
-| `SEERR_URL` | `http://<NAS-IP>:5055` |
-| `WEBHOOK_SECRET` | any random string |
+```
+https://raw.githubusercontent.com/killamfkr/Cellar-loader/main/mycelium-media-stack/casaos/docker-compose.yml
+```
 
-In Seerr: webhook `http://<NAS-IP>:8088/webhook` with header `X-Webhook-Secret`.
+Point Jellyfin at `/DATA/AppData/mycelium-plex/plex-media` or `/DATA/Media/mycelium` depending on which compose you use.
+
+---
+
+## Plex image not found?
+
+```bash
+git clone https://github.com/killamfkr/Cellar-loader.git
+cd Cellar-loader/mycelium-media-stack/images/plex-spore
+docker build -t ghcr.io/killamfkr/plex-spore:latest .
+```
+
+---
 
 ## Troubleshooting
 
-- **Failed to start** — validate YAML in Compose Toolbox; ensure folders exist; `sudo chown -R 1000:1000 /DATA/AppData/mycelium /DATA/Media/mycelium`
-- **Catbox streaming fails** — `CATBOX_HOST` must be your real LAN IP, not `localhost`
-
-Upstream project: https://github.com/corveck79/mycelium
+- **Failed to start** — validate in Compose Toolbox; check folders exist
+- **Plex empty library** — wait for Mycelium to add content; libraries must use `/plex-media` paths inside Plex
+- **Permissions** — `sudo chown -R 1000:1000 /DATA/AppData/mycelium-plex`
