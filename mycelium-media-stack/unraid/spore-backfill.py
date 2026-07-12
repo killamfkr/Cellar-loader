@@ -83,15 +83,24 @@ def _stub_paths(strm_path: Path) -> tuple[Path, Path]:
     return stub_dir / (strm_path.stem + ".mkv"), stub_dir / (strm_path.stem + ".minfo")
 
 
+def _token_from_strm_silent(path: Path) -> str | None:
+    try:
+        text = path.read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+    match = TOKEN_RE.search(text)
+    return match.group(1) if match else None
+
+
 def _token_from_strm(path: Path) -> str | None:
+    token = _token_from_strm_silent(path)
+    if token:
+        return token
     try:
         text = path.read_text(encoding="utf-8").strip()
     except OSError as exc:
         print(f"read error {path}: {exc}")
         return None
-    match = TOKEN_RE.search(text)
-    if match:
-        return match.group(1)
     print(f"no stream token in {path}: {text[:120]!r}")
     return None
 
@@ -196,6 +205,9 @@ def diagnose() -> list[Path]:
     print(f"config.SPORE_MEDIA_PATH: {config.SPORE_MEDIA_PATH}")
     print(f"plex-media writable: {_check_writable(spore_root)}")
     print(f".strm files on disk: {len(strms)}")
+    with_token = sum(1 for s in strms if _token_from_strm_silent(s))
+    print(f".strm with /stream/ token URL: {with_token}")
+    print(f".strm with legacy CDN URL (need rebuild-catbox): {len(strms) - with_token}")
     print(f"virtual_items in DB: {len(virtual)}")
     print(f"movie requests (success): {len(success)}")
     stubs = list(spore_root.rglob("*.mkv")) if spore_root.is_dir() else []
@@ -226,7 +238,7 @@ def diagnose() -> list[Path]:
         if not mkv.exists():
             missing.append(strm)
     print(f"\n.strm without matching stub: {len(missing)}")
-    return missing
+    return missing, len(strms), with_token
 
 
 def write_stub_direct(strm_path: Path, token: str, item: dict) -> bool:
@@ -357,13 +369,14 @@ def backfill_all(index: dict[str, dict]) -> int:
 def main() -> int:
     force_spore_settings()
     index = _build_item_index()
-    missing = diagnose()
+    missing, strm_count, with_token = diagnose()
     print()
 
     if not missing and not list(_spore_root().rglob("*.mkv")):
-        print("No .strm files found under MEDIA_PATH.")
-        print("Request media in Seerr or run TorBox library scan in Mycelium Admin.")
-        return 1
+        if strm_count == 0:
+            print("No .strm files found under MEDIA_PATH.")
+            print("Request media in Seerr or run TorBox library scan in Mycelium Admin.")
+            return 1
 
     if os.geteuid() != 0 and not _check_writable(_spore_root()):
         print("plex-media is not writable — re-run as root:")
@@ -378,6 +391,8 @@ def main() -> int:
         print("Next: ./manage.sh plex-scan")
         return 0
     print("No stubs created. Check diagnose output above (token URLs, permissions, writable path).")
+    if strm_count > 0 and with_token == 0:
+        print("All .strm files use legacy CDN URLs — run: ./manage.sh rebuild-catbox")
     return 1
 
 

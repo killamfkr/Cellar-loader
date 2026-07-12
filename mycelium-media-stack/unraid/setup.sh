@@ -227,14 +227,16 @@ EOF
   chmod 600 "${INSTALL_DIR}/.stack-env"
 }
 
-copy_spore_backfill() {
-  local dest="${INSTALL_DIR}/spore-backfill.py"
-  if [[ -n "${SCRIPT_DIR}" && -f "${SCRIPT_DIR}/spore-backfill.py" ]]; then
-    cp "${SCRIPT_DIR}/spore-backfill.py" "${dest}"
-  else
-    curl -fsSL "${REPO_RAW}/unraid/spore-backfill.py" -o "${dest}"
-  fi
-  chmod +x "${dest}"
+copy_helper_scripts() {
+  for script in spore-backfill.py catbox-rebuild.py; do
+    local dest="${INSTALL_DIR}/${script}"
+    if [[ -n "${SCRIPT_DIR}" && -f "${SCRIPT_DIR}/${script}" ]]; then
+      cp "${SCRIPT_DIR}/${script}" "${dest}"
+    else
+      curl -fsSL "${REPO_RAW}/unraid/${script}" -o "${dest}"
+    fi
+    chmod +x "${dest}"
+  done
 }
 
 write_manage() {
@@ -254,7 +256,7 @@ refresh_scripts() {
   log "Refreshing manage.sh and spore-backfill.py in ${INSTALL_DIR} ..."
   mkdir -p "${INSTALL_DIR}"
   write_manage
-  copy_spore_backfill
+  copy_helper_scripts
   log "Done. Run: cd ${INSTALL_DIR} && ./manage.sh sync-plex"
 }
 
@@ -348,7 +350,7 @@ main() {
   create_dirs
   write_compose
   write_manage
-  copy_spore_backfill
+  copy_helper_scripts
   ensure_plex_image
   start_stack
   print_done

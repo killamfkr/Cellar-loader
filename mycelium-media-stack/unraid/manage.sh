@@ -5,7 +5,7 @@ cd "$(dirname "$0")"
 REPO_RAW="${REPO_RAW:-https://raw.githubusercontent.com/killamfkr/Cellar-loader/main/mycelium-media-stack}"
 COMPOSE=(docker compose)
 usage() {
-  echo "Usage: ./manage.sh {start|stop|restart|status|logs|urls|update|claim-plex|test-webhook|plex-scan|check-media|check-spore|test-playback|fix-plex-network|spore-backfill|sync-plex|sync-strm-fallback|fix-perms}"
+  echo "Usage: ./manage.sh {start|stop|restart|status|logs|urls|update|claim-plex|test-webhook|plex-scan|check-media|check-spore|test-playback|fix-plex-network|rebuild-catbox|spore-backfill|sync-plex|sync-strm-fallback|fix-perms}"
 }
 pref_file() {
   echo "$(pwd)/plex/Library/Application Support/Plex Media Server/Preferences.xml"
@@ -239,6 +239,18 @@ PY
     echo "Done. Test: ./manage.sh test-playback"
     echo "Play from LAN: http://${ip}:32400/web"
     ;;
+  rebuild-catbox)
+    script="$(pwd)/catbox-rebuild.py"
+    if [[ ! -f "${script}" ]]; then
+      echo "Downloading catbox-rebuild.py ..."
+      curl -fsSL "${REPO_RAW}/unraid/catbox-rebuild.py" -o "${script}" || \
+        curl -fsSL "https://raw.githubusercontent.com/killamfkr/Cellar-loader/main/mycelium-media-stack/unraid/catbox-rebuild.py" -o "${script}"
+    fi
+    echo "Rebuilding Catbox tokens for legacy CDN .strm files ..."
+    docker compose cp "${script}" mycelium:/app/catbox-rebuild.py
+    docker compose exec -T -w /app mycelium python3 /app/catbox-rebuild.py
+    "${BASH_SOURCE[0]:-$0}" spore-backfill
+    ;;
   spore-backfill)
     script="$(pwd)/spore-backfill.py"
     if [[ ! -f "${script}" ]]; then
@@ -286,6 +298,19 @@ PY
     fi
     ;;
   sync-plex)
+    # Legacy CDN strms need Catbox tokens before Spore stubs can be created.
+    if docker compose exec -T -w /app mycelium python3 - <<'PY' 2>/dev/null | grep -q NEED_REBUILD; then
+import db
+from pathlib import Path
+media = Path("/data/media")
+strms = list(media.rglob("*.strm")) if media.is_dir() else []
+cdn = sum(1 for s in strms if "/stream/" not in s.read_text(encoding="utf-8", errors="ignore"))
+if cdn and len(db.get_all_virtual_items()) == 0:
+    print("NEED_REBUILD")
+PY
+      echo "Legacy CDN .strm detected with empty virtual_items — running rebuild-catbox first ..."
+      "${BASH_SOURCE[0]:-$0}" rebuild-catbox
+    fi
     "${BASH_SOURCE[0]:-$0}" spore-backfill
     stub_count="$(find "$(pwd)/plex-media" -name '*.mkv' 2>/dev/null | wc -l | tr -d ' ')"
     strm_count="$(find "$(pwd)/mycelium/media" -name '*.strm' 2>/dev/null | wc -l | tr -d ' ')"

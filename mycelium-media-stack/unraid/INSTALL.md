@@ -158,7 +158,7 @@ The Mycelium **Library** page lists database requests — not files in `plex-med
 |-----------------|-----|
 | `config.SPORE_ENABLED = False` | Add `SPORE_ENABLED: "true"` to `docker-compose.yml` → `docker compose up -d mycelium`. There is **no Spore toggle in Mycelium Settings UI**. |
 | `.strm files on disk: 0` | No media files yet. Mycelium Admin → **TorBox library scan**, or re-request the title |
-| `virtual_items in DB: 0` | Request never fully processed — check Mycelium Admin for `failed` / `wanted` status |
+| `virtual_items in DB: 0` with many `.strm` files | Legacy CDN URLs — run `./manage.sh rebuild-catbox` then `./manage.sh sync-plex` |
 | `plex-media writable: False` | Run `./manage.sh fix-perms` or `./manage.sh sync-plex` (retries as root) |
 
 Verify Spore env:
@@ -186,6 +186,16 @@ SPORE_ENABLED: "true"
 SPORE_MEDIA_PATH: /data/plex-media
 CATBOX_MODE: "true"
 CATBOX_LAZY_ADD: "true"
+```
+
+### Legacy library (751+ CDN .strm, virtual_items empty)
+
+If diagnose shows many `.strm` files but `virtual_items in DB: 0`, the library was built before Catbox mode. Rebuild tokens, then stubs:
+
+```bash
+cd /mnt/user/appdata/mycelium-media-stack
+./manage.sh rebuild-catbox
+./manage.sh sync-plex
 ```
 
 ## Zilean is down
