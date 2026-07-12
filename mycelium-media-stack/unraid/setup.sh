@@ -136,7 +136,7 @@ services:
       PGID: ${PGID}
       TZ: ${TZ}
       VERSION: docker
-      PLEX_CLAIM: ${PLEX_CLAIM:-}
+      PLEX_CLAIM: \${PLEX_CLAIM:-}
       MYCELIUM_URL: http://mycelium:8088
     volumes:
       - ${INSTALL_DIR}/plex:/config
@@ -227,7 +227,10 @@ cd "$(dirname "$0")"
 [[ -f .stack-env ]] && source .stack-env
 COMPOSE=(docker compose)
 usage() {
-  echo "Usage: ./manage.sh {start|stop|restart|status|logs|urls|update}"
+  echo "Usage: ./manage.sh {start|stop|restart|status|logs|urls|update|claim-plex}"
+}
+pref_file() {
+  echo "$(pwd)/plex/Library/Application Support/Plex Media Server/Preferences.xml"
 }
 cmd="${1:-}"
 case "${cmd}" in
@@ -237,6 +240,26 @@ case "${cmd}" in
   status)  docker compose ps ;;
   logs)    docker compose logs -f --tail=100 "${2:-}" ;;
   update)  docker compose pull && docker compose up -d ;;
+  claim-plex)
+    echo "1. Open https://www.plex.tv/claim/ and copy the token (expires in ~4 minutes)"
+    read -r -p "2. Paste PLEX_CLAIM token: " token
+    [[ -n "${token}" ]] || { echo "No token entered."; exit 1; }
+    docker stop plex 2>/dev/null || true
+    pref="$(pref_file)"
+    if [[ -f "${pref}" ]]; then
+      echo "Clearing old Plex account link from Preferences.xml ..."
+      sed -i \
+        -e 's/ PlexOnlineToken="[^"]*"//g' \
+        -e 's/ PlexOnlineUsername="[^"]*"//g' \
+        -e 's/ PlexOnlineEmail="[^"]*"//g' \
+        -e 's/ PlexOnlineHome="[^"]*"//g' \
+        "${pref}"
+    fi
+    echo "Claiming server and starting Plex ..."
+    PLEX_CLAIM="${token}" docker compose up -d plex
+    echo "Wait ~30s, then open: http://${HOST_IP:-192.168.0.100}:32400/web"
+    echo "Sign in with the SAME Plex account you used for the claim token."
+    ;;
   urls)
     ip="${HOST_IP:-192.168.0.100}"
     cat <<EOF
@@ -299,6 +322,11 @@ ${CYAN}Services (192.168.0.100)${NC}
 ${CYAN}Seerr webhook${NC}
   URL:    http://${HOST_IP}:8088/webhook
   Header: X-Webhook-Secret: ${WEBHOOK_SECRET:-see .stack-env}
+
+${CYAN}Plex — claim your server${NC}
+  If you see "You do not have access to this server":
+    cd ${INSTALL_DIR} && ./manage.sh claim-plex
+  Or open http://${HOST_IP}:32400/web from a device on your LAN and sign in.
 
 ${CYAN}Plex libraries${NC}
   Movies: /plex-media/movies

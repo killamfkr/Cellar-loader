@@ -42,6 +42,37 @@ cd /mnt/user/appdata/mycelium-media-stack
 2. Open **Plex** — `http://192.168.0.100:32400/web`, add libraries at `/plex-media/movies` and `/plex-media/tv`
 3. Configure **Seerr** — use `http://192.168.0.100` for all service URLs; webhook secret is in `.stack-env`
 
+## Plex: "You do not have access to this server"
+
+Plex must be **claimed** to your Plex account. The setup script does not do this automatically.
+
+### Quick fix (Unraid terminal)
+
+```bash
+cd /mnt/user/appdata/mycelium-media-stack
+./manage.sh claim-plex
+```
+
+1. Open https://www.plex.tv/claim/ — copy the token (expires in ~4 minutes)
+2. Paste it when prompted
+3. Open **http://192.168.0.100:32400/web** from a device on your **same LAN**
+4. Sign in with the **same Plex account** you used to get the claim token
+
+### Manual fix
+
+```bash
+docker stop plex
+# Edit and remove PlexOnlineToken, PlexOnlineUsername, PlexOnlineEmail, PlexOnlineHome from:
+# /mnt/user/appdata/mycelium-media-stack/plex/Library/Application Support/Plex Media Server/Preferences.xml
+PLEX_CLAIM=your-token-from-plex-tv-claim docker compose up -d plex
+```
+
+### Important
+
+- Use **http://192.168.0.100:32400/web** directly — not app.plex.tv for first claim
+- Claim token only works **once** and only if Preferences.xml has no valid token
+- If still broken: `docker stop plex`, delete the `plex` config folder, re-run `./manage.sh claim-plex` (you will lose Plex settings)
+
 ## Optional env vars
 
 | Variable | Default |
