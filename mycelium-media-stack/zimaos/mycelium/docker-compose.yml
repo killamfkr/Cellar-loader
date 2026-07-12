@@ -5,8 +5,7 @@ services:
     image: ghcr.io/corveck79/mycelium:latest
     container_name: mycelium
     restart: unless-stopped
-    networks:
-      - mycelium-media
+    network_mode: bridge
     ports:
       - target: 8088
         published: "8088"
@@ -27,25 +26,8 @@ services:
       SPORE_ENABLED: "true"
       SPORE_MEDIA_PATH: /data/plex-media
       WEBHOOK_SECRET: $WEBHOOK_SECRET
-      SEERR_URL: http://seerr:5055
+      SEERR_URL: $SEERR_URL
       SEERR_API_KEY: $SEERR_API_KEY
-      x-casaos:
-        envs:
-          - container: TORBOX_API_KEY
-            description:
-              en_us: TorBox API key from torbox.app → Settings → API.
-          - container: TMDB_API_KEY
-            description:
-              en_us: TMDB Read Access Token (starts with eyJ).
-          - container: CATBOX_HOST
-            description:
-              en_us: Your ZimaOS LAN URL, e.g. http://192.168.1.50:8088
-          - container: WEBHOOK_SECRET
-            description:
-              en_us: Random secret for Seerr webhooks (same value in Seerr later).
-          - container: SEERR_API_KEY
-            description:
-              en_us: Optional — paste after Seerr setup.
     volumes:
       - type: bind
         source: /DATA/AppData/mycelium-media-stack/mycelium
@@ -53,12 +35,26 @@ services:
       - type: bind
         source: /DATA/AppData/mycelium-media-stack/plex-media
         target: /data/plex-media
-    devices:
-      - /dev/dri:/dev/dri
-
-networks:
-  mycelium-media:
-    external: true
+    x-casaos:
+      envs:
+        - container: TORBOX_API_KEY
+          description:
+            en_us: TorBox API key from torbox.app Settings API page.
+        - container: TMDB_API_KEY
+          description:
+            en_us: TMDB Read Access Token (starts with eyJ).
+        - container: CATBOX_HOST
+          description:
+            en_us: Your ZimaOS LAN URL, e.g. http://192.168.1.50:8088
+        - container: WEBHOOK_SECRET
+          description:
+            en_us: Random secret for Seerr webhooks.
+        - container: SEERR_URL
+          description:
+            en_us: Seerr URL using your LAN IP, e.g. http://192.168.1.50:5055
+        - container: SEERR_API_KEY
+          description:
+            en_us: Optional. Paste after Seerr setup.
 
 x-casaos:
   app_id: com.cellarloader.mycelium
@@ -69,7 +65,7 @@ x-casaos:
   description:
     en_us: TorBox library automation with Catbox lazy streaming and Spore Plex stubs.
   tagline:
-    en_us: Mycelium — TorBox media pipeline
+    en_us: Mycelium TorBox media pipeline
   icon: https://cdn.jsdelivr.net/gh/IceWhaleTech/CasaOS-AppStore@main/Apps/Jellyfin/icon.svg
   index: /
   scheme: http
@@ -78,7 +74,7 @@ x-casaos:
   tips:
     before_install:
       en_us: |
-        Install **Mycelium Media Network** first.
+        Run prepare.sh once via SSH to create folders.
         Set CATBOX_HOST to http://YOUR-ZIMAOS-IP:8088 before installing.
   title:
     en_us: Mycelium

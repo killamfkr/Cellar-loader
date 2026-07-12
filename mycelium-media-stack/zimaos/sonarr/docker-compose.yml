@@ -5,8 +5,7 @@ services:
     image: lscr.io/linuxserver/sonarr:latest
     container_name: sonarr
     restart: unless-stopped
-    networks:
-      - mycelium-media
+    network_mode: bridge
     ports:
       - target: 8989
         published: "8989"
@@ -20,10 +19,6 @@ services:
         source: /DATA/AppData/mycelium-media-stack/sonarr
         target: /config
 
-networks:
-  mycelium-media:
-    external: true
-
 x-casaos:
   app_id: com.cellarloader.sonarr
   main: sonarr
@@ -31,7 +26,7 @@ x-casaos:
   developer: LinuxServer.io
   category: Media
   description:
-    en_us: TV list manager. Connect to Mycelium Admin for bulk import (not a download client).
+    en_us: TV list manager for bulk import into Mycelium.
   tagline:
     en_us: Sonarr for Mycelium stack
   icon: https://cdn.jsdelivr.net/gh/IceWhaleTech/CasaOS-AppStore@main/Apps/Sonarr/icon.svg

@@ -5,8 +5,7 @@ services:
     image: ghcr.io/killamfkr/plex-spore:latest
     container_name: plex
     restart: unless-stopped
-    networks:
-      - mycelium-media
+    network_mode: bridge
     ports:
       - "32400:32400"
     environment:
@@ -15,10 +14,7 @@ services:
       TZ: ${TZ:-UTC}
       VERSION: docker
       PLEX_CLAIM: ""
+      MYCELIUM_URL: http://192.168.1.50:8088
     volumes:
       - /mnt/user/appdata/mycelium-media-stack/plex:/config
-      - /mnt/user/appdata/mycelium-media-stack/plex-media:/plex-media:ro
-
-networks:
-  mycelium-media:
-    external: true
+      - /mnt/user/appdata/mycelium-media-stack/plex-media:/plex-media

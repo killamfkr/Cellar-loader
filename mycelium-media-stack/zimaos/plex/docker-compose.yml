@@ -5,8 +5,7 @@ services:
     image: ghcr.io/killamfkr/plex-spore:latest
     container_name: plex
     restart: unless-stopped
-    networks:
-      - mycelium-media
+    network_mode: bridge
     ports:
       - target: 32400
         published: "32400"
@@ -17,11 +16,7 @@ services:
       TZ: $TZ
       VERSION: docker
       PLEX_CLAIM: $PLEX_CLAIM
-      x-casaos:
-        envs:
-          - container: PLEX_CLAIM
-            description:
-              en_us: Optional claim token from plex.tv/claim (expires in ~4 minutes).
+      MYCELIUM_URL: $MYCELIUM_URL
     volumes:
       - type: bind
         source: /DATA/AppData/mycelium-media-stack/plex
@@ -29,11 +24,14 @@ services:
       - type: bind
         source: /DATA/AppData/mycelium-media-stack/plex-media
         target: /plex-media
-        read_only: true
-
-networks:
-  mycelium-media:
-    external: true
+    x-casaos:
+      envs:
+        - container: PLEX_CLAIM
+          description:
+            en_us: Optional claim token from plex.tv/claim (expires in ~4 minutes).
+        - container: MYCELIUM_URL
+          description:
+            en_us: Mycelium URL for Spore, e.g. http://192.168.1.50:8088
 
 x-casaos:
   app_id: com.cellarloader.plex-spore
@@ -42,7 +40,7 @@ x-casaos:
   developer: LinuxServer.io
   category: Media
   description:
-    en_us: Plex with Mycelium Spore transcoder wrapper pre-installed. No runtime downloads.
+    en_us: Plex with Mycelium Spore transcoder wrapper pre-installed.
   tagline:
     en_us: Plex + Spore for Mycelium
   icon: https://cdn.jsdelivr.net/gh/IceWhaleTech/CasaOS-AppStore@main/Apps/Plex/icon.svg
@@ -53,8 +51,8 @@ x-casaos:
   tips:
     before_install:
       en_us: |
-        Install **Mycelium Media Network** and **Mycelium** first.
+        Install Mycelium first.
+        Set MYCELIUM_URL to http://YOUR-ZIMAOS-IP:8088
         Add Plex libraries at /plex-media/movies and /plex-media/tv after install.
-        Spore is experimental — Linux/desktop Plex clients work best.
   title:
     en_us: Plex Spore

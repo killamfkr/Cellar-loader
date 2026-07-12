@@ -5,8 +5,7 @@ services:
     image: lscr.io/linuxserver/prowlarr:latest
     container_name: prowlarr
     restart: unless-stopped
-    networks:
-      - mycelium-media
+    network_mode: bridge
     ports:
       - "9696:9696"
     environment:
@@ -15,7 +14,3 @@ services:
       TZ: ${TZ:-UTC}
     volumes:
       - /mnt/user/appdata/mycelium-media-stack/prowlarr:/config
-
-networks:
-  mycelium-media:
-    external: true

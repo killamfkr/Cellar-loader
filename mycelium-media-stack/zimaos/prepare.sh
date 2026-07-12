@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Create folders (and shared network) for the Mycelium media stack on ZimaOS.
+# Create folders for the Mycelium media stack on ZimaOS.
 set -euo pipefail
 
 BASE="/DATA/AppData/mycelium-media-stack"
@@ -19,26 +19,23 @@ PUID="${PUID:-1000}"
 PGID="${PGID:-1000}"
 chown -R "${PUID}:${PGID}" "${BASE}" 2>/dev/null || sudo chown -R "${PUID}:${PGID}" "${BASE}" || true
 
-if command -v docker &>/dev/null; then
-  docker network create mycelium-media 2>/dev/null || true
-  echo "Docker network 'mycelium-media' ready."
-fi
+HOST_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
+[[ -n "${HOST_IP}" ]] || HOST_IP="192.168.1.50"
 
-cat <<'EOF'
-Folders ready.
+cat <<EOF
+Done. Folders created at ${BASE}
 
-Import each compose separately in ZimaOS (Install a customized app → Import):
+Import each compose in ZimaOS (+ → Install a customized app → Import):
 
-  1. zimaos/network/docker-compose.yml
-  2. zimaos/mycelium/docker-compose.yml   ← set API keys here
-  3. zimaos/plex/docker-compose.yml
-  4. zimaos/byparr/docker-compose.yml
-  5. zimaos/prowlarr/docker-compose.yml
-  6. zimaos/radarr/docker-compose.yml
-  7. zimaos/sonarr/docker-compose.yml
-  8. zimaos/seerr/docker-compose.yml
+  1. zimaos/mycelium/docker-compose.yml   (set API keys + CATBOX_HOST=http://${HOST_IP}:8088)
+  2. zimaos/plex/docker-compose.yml       (set MYCELIUM_URL=http://${HOST_IP}:8088)
+  3. zimaos/byparr/docker-compose.yml
+  4. zimaos/prowlarr/docker-compose.yml
+  5. zimaos/radarr/docker-compose.yml
+  6. zimaos/sonarr/docker-compose.yml
+  7. zimaos/seerr/docker-compose.yml
 
-No .env files — edit variables in the ZimaOS app settings UI.
+No network app needed. No .env files.
 
-Full guide: zimaos/INSTALL.md
+Guide: zimaos/INSTALL.md
 EOF

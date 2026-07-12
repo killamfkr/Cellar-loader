@@ -5,15 +5,10 @@ services:
     image: ghcr.io/seerr-team/seerr:latest
     container_name: seerr
     restart: unless-stopped
-    networks:
-      - mycelium-media
+    network_mode: bridge
     ports:
       - "5055:5055"
     environment:
       TZ: ${TZ:-UTC}
     volumes:
       - /mnt/user/appdata/mycelium-media-stack/seerr:/app/config
-
-networks:
-  mycelium-media:
-    external: true

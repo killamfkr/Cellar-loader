@@ -5,15 +5,10 @@ services:
     image: ghcr.io/thephaseless/byparr:latest
     container_name: byparr
     restart: unless-stopped
-    networks:
-      - mycelium-media
+    network_mode: bridge
     ports:
       - "8191:8191"
     environment:
       LOG_LEVEL: info
       LOG_HTML: "false"
       TZ: ${TZ:-UTC}
-
-networks:
-  mycelium-media:
-    external: true

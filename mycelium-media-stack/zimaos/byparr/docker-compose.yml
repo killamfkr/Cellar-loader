@@ -5,8 +5,7 @@ services:
     image: ghcr.io/thephaseless/byparr:latest
     container_name: byparr
     restart: unless-stopped
-    networks:
-      - mycelium-media
+    network_mode: bridge
     ports:
       - target: 8191
         published: "8191"
@@ -15,10 +14,6 @@ services:
       LOG_LEVEL: info
       LOG_HTML: "false"
       TZ: $TZ
-
-networks:
-  mycelium-media:
-    external: true
 
 x-casaos:
   app_id: com.cellarloader.byparr

@@ -5,8 +5,7 @@ services:
     image: ghcr.io/seerr-team/seerr:latest
     container_name: seerr
     restart: unless-stopped
-    networks:
-      - mycelium-media
+    network_mode: bridge
     ports:
       - target: 5055
         published: "5055"
@@ -18,10 +17,6 @@ services:
         source: /DATA/AppData/mycelium-media-stack/seerr
         target: /app/config
 
-networks:
-  mycelium-media:
-    external: true
-
 x-casaos:
   app_id: com.cellarloader.seerr
   main: seerr
@@ -29,7 +24,7 @@ x-casaos:
   developer: Seerr Team
   category: Media
   description:
-    en_us: Request UI for Plex. Webhook to Mycelium at http://mycelium:8088/webhook
+    en_us: Request UI for Plex. Use your LAN IP for service URLs during setup.
   tagline:
     en_us: Seerr for Mycelium stack
   icon: https://cdn.jsdelivr.net/gh/IceWhaleTech/CasaOS-AppStore@main/Apps/Overseerr/icon.svg
@@ -41,6 +36,6 @@ x-casaos:
     before_install:
       en_us: |
         Install Plex, Radarr, and Sonarr first.
-        After setup, add webhook http://mycelium:8088/webhook with your WEBHOOK_SECRET header.
+        Webhook URL uses your LAN IP: http://YOUR-IP:8088/webhook
   title:
     en_us: Seerr

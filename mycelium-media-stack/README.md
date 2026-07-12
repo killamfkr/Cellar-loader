@@ -8,7 +8,6 @@ Each app is imported individually as a ZimaOS Custom App.
 
 | Folder | Service |
 |--------|---------|
-| [`zimaos/network/`](zimaos/network/) | Shared Docker network (install first) |
 | [`zimaos/mycelium/`](zimaos/mycelium/) | Mycelium (Catbox + Spore) |
 | [`zimaos/plex/`](zimaos/plex/) | Plex Spore image |
 | [`zimaos/byparr/`](zimaos/byparr/) | Cloudflare bypass |
@@ -34,5 +33,5 @@ Built from [`images/plex-spore/`](images/plex-spore/). Published as `ghcr.io/kil
 ## Notes
 
 - Mycelium handles streaming; Radarr/Sonarr are for bulk import, not download clients.
-- All containers join the external `mycelium-media` network.
+- Each app uses `network_mode: bridge` — use your LAN IP (not container names) for cross-service URLs.
 - Stream only content you have the right to access.

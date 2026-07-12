@@ -5,8 +5,7 @@ services:
     image: lscr.io/linuxserver/sonarr:latest
     container_name: sonarr
     restart: unless-stopped
-    networks:
-      - mycelium-media
+    network_mode: bridge
     ports:
       - "8989:8989"
     environment:
@@ -15,7 +14,3 @@ services:
       TZ: ${TZ:-UTC}
     volumes:
       - /mnt/user/appdata/mycelium-media-stack/sonarr:/config
-
-networks:
-  mycelium-media:
-    external: true

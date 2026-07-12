@@ -5,8 +5,7 @@ services:
     image: lscr.io/linuxserver/radarr:latest
     container_name: radarr
     restart: unless-stopped
-    networks:
-      - mycelium-media
+    network_mode: bridge
     ports:
       - target: 7878
         published: "7878"
@@ -20,10 +19,6 @@ services:
         source: /DATA/AppData/mycelium-media-stack/radarr
         target: /config
 
-networks:
-  mycelium-media:
-    external: true
-
 x-casaos:
   app_id: com.cellarloader.radarr
   main: radarr
@@ -31,7 +26,7 @@ x-casaos:
   developer: LinuxServer.io
   category: Media
   description:
-    en_us: Movie list manager. Connect to Mycelium Admin for bulk import (not a download client).
+    en_us: Movie list manager for bulk import into Mycelium.
   tagline:
     en_us: Radarr for Mycelium stack
   icon: https://cdn.jsdelivr.net/gh/IceWhaleTech/CasaOS-AppStore@main/Apps/Radarr/icon.svg

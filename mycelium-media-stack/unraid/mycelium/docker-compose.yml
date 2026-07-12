@@ -5,8 +5,7 @@ services:
     image: ghcr.io/corveck79/mycelium:latest
     container_name: mycelium
     restart: unless-stopped
-    networks:
-      - mycelium-media
+    network_mode: bridge
     ports:
       - "8088:8088"
     environment:
@@ -25,14 +24,8 @@ services:
       SPORE_ENABLED: "true"
       SPORE_MEDIA_PATH: /data/plex-media
       WEBHOOK_SECRET: change-me
-      SEERR_URL: http://seerr:5055
+      SEERR_URL: http://192.168.1.50:5055
       SEERR_API_KEY: ""
     volumes:
       - /mnt/user/appdata/mycelium-media-stack/mycelium:/data
       - /mnt/user/appdata/mycelium-media-stack/plex-media:/data/plex-media
-    devices:
-      - /dev/dri:/dev/dri
-
-networks:
-  mycelium-media:
-    external: true
