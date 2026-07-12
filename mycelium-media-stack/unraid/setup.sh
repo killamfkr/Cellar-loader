@@ -229,7 +229,7 @@ cd "$(dirname "$0")"
 [[ -f .stack-env ]] && source .stack-env
 COMPOSE=(docker compose)
 usage() {
-  echo "Usage: ./manage.sh {start|stop|restart|status|logs|urls|update|claim-plex|test-webhook}"
+  echo "Usage: ./manage.sh {start|stop|restart|status|logs|urls|update|claim-plex|test-webhook|plex-scan|check-media}"
 }
 pref_file() {
   echo "$(pwd)/plex/Library/Application Support/Plex Media Server/Preferences.xml"
@@ -304,6 +304,46 @@ EOF
       exit 1
     fi
     ;;
+  plex-scan)
+    ip="${HOST_IP:-192.168.0.100}"
+    pref="$(pref_file)"
+    token=""
+    if [[ -f "${pref}" ]]; then
+      token="$(grep -oP 'PlexOnlineToken="\K[^"]+' "${pref}" 2>/dev/null || true)"
+    fi
+    if [[ -z "${token}" ]]; then
+      echo "No Plex token found — claim Plex first: ./manage.sh claim-plex"
+      exit 1
+    fi
+    echo "Refreshing Plex libraries on http://${ip}:32400 ..."
+    sections="$(curl -sS "http://${ip}:32400/library/sections?X-Plex-Token=${token}")"
+    while IFS= read -r id; do
+      [[ -z "${id}" ]] && continue
+      title="$(echo "${sections}" | grep -oP "(?<=<Directory )[^>]*key=\"${id}\"[^>]*title=\"\K[^\"]+" | head -1)"
+      curl -sS -X GET "http://${ip}:32400/library/sections/${id}/refresh?X-Plex-Token=${token}" >/dev/null
+      echo "  scanned: ${title:-section ${id}}"
+    done < <(echo "${sections}" | grep -oP '(?<=<Directory )[^>]*key="\K[0-9]+')
+    echo "Done — wait ~30s, then check Plex and run Sync Libraries in Seerr."
+    ;;
+  check-media)
+    ip="${HOST_IP:-192.168.0.100}"
+    media_dir="$(pwd)/plex-media/movies"
+    echo "=== Spore stubs (what Plex should see) ==="
+    if [[ -d "${media_dir}" ]]; then
+      find "${media_dir}" -name '*.mkv' 2>/dev/null | head -20 || echo "(no .mkv stubs yet)"
+      count="$(find "${media_dir}" -name '*.mkv' 2>/dev/null | wc -l | tr -d ' ')"
+      echo "Total movie stubs: ${count}"
+    else
+      echo "Missing ${media_dir}"
+    fi
+    echo ""
+    echo "=== Recent Mycelium activity ==="
+    docker compose logs mycelium --tail=80 2>/dev/null | grep -iE 'webhook|Added|Failed|wanted|process|Seerr|error' || true
+    echo ""
+    echo "Check Mycelium admin: http://${ip}:8088/admin"
+    echo "Seerr webhook must trigger on Request Approved (not just Test)."
+    echo "Mycelium needs SEERR_API_KEY set — Seerr → Settings → General → API Key"
+    ;;
   *) usage; exit 1 ;;
 esac
 MANAGE
@@ -370,6 +410,12 @@ ${CYAN}Radarr / Sonarr (list managers — Mycelium does the grabbing)${NC}
   Radarr root folder: /movies   (no download client)
   Sonarr root folder: /tv      (no download client)
   Mycelium Admin → Integrations → connect Radarr & Sonarr for bulk import
+
+${CYAN}After a Seerr request${NC}
+  1. Mycelium Admin → confirm request added (not failed)
+  2. ./manage.sh check-media   (stub .mkv in plex-media/movies)
+  3. ./manage.sh plex-scan     (Mycelium does not auto-scan Plex)
+  4. Seerr → Settings → Plex → Sync Libraries
 
 ${CYAN}Seerr connections (use LAN IP)${NC}
   Plex:   http://${HOST_IP}:32400

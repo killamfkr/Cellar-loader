@@ -83,6 +83,40 @@ Also in **Mycelium Admin → Settings**, set:
 
 Restart Mycelium after changing those.
 
+### After requesting in Seerr
+
+The webhook only **notifies** Mycelium. A movie appears in Plex only after the full chain below.
+
+| Step | What happens | You check |
+|------|----------------|-----------|
+| 1 | Seerr approves request → webhook fires `MEDIA_APPROVED` | Seerr webhook has **Request Approved** enabled |
+| 2 | Mycelium fetches request details from Seerr API | `SEERR_API_KEY` set in Mycelium Settings |
+| 3 | Mycelium finds a TorBox-cached release and writes a Spore stub `.mkv` | `./manage.sh check-media` |
+| 4 | Plex scans `/plex-media/movies` | `./manage.sh plex-scan` or Scan in Plex UI |
+| 5 | Seerr syncs Plex libraries | Seerr → Settings → Plex → **Sync Libraries** |
+
+Radarr will stay on "missing" — that is normal. Mycelium does the grab, not Radarr.
+
+```bash
+cd /mnt/user/appdata/mycelium-media-stack
+./manage.sh check-media    # stubs + recent Mycelium logs
+./manage.sh plex-scan      # force Plex library scan
+```
+
+In **Mycelium Admin** (`http://192.168.0.100:8088/admin`), confirm the request shows as added (not failed/wanted).
+
+## Request in Seerr but movie not in Plex
+
+1. **Webhook triggers** — Seerr → Notifications → Webhook → enable **Request Approved** and **Request Auto-Approved** (not just Test).
+2. **`SEERR_API_KEY` missing** — Mycelium cannot look up request details without it.
+   - Seerr → Settings → General → copy API Key
+   - Mycelium Admin → Settings → paste `SEERR_API_KEY`, set `SEERR_URL` = `http://192.168.0.100:5055`
+   - `docker compose restart mycelium`
+3. **No TorBox cached release** — Mycelium logs `wanted` or `failed`. Try another title or check TorBox API key.
+4. **Plex not scanned** — Mycelium does not auto-refresh Plex (only Jellyfin). Run `./manage.sh plex-scan`.
+5. **Wrong Plex library path** — libraries must point to `/plex-media/movies` and `/plex-media/tv` inside Plex.
+6. **Seerr still shows "Processing"** — until Plex has the movie and you **Sync Libraries** in Seerr.
+
 ## Webhook test failed in Seerr
 
 1. **Secret missing or wrong** — most common. Use the full URL with `?secret=` (Seerr cannot rely on headers alone on all versions).
@@ -152,6 +186,7 @@ Then add root folders **`/movies`** (Radarr) and **`/tv`** (Sonarr).
 | `PUID` / `PGID` | `99` / `100` |
 | `PLEX_CLAIM` | empty |
 | `WEBHOOK_SECRET` | auto-generated |
+| `SEERR_API_KEY` | empty (set from Seerr → General → API Key) |
 
 ## Different IP?
 
