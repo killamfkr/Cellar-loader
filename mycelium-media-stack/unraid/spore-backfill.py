@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
-"""Generate Plex Spore stubs from Mycelium library state.
+"""Generate Plex Spore stubs from Mycelium .strm files.
 
-Run inside the Mycelium container with WORKDIR /app, e.g.:
+Mycelium keeps .strm files in /data/media. Plex reads Spore stub .mkv files
+from /data/plex-media. This script mirrors the folder layout and writes stubs.
+
+Run inside the Mycelium container:
   docker compose exec -T -w /app mycelium python3 /app/spore-backfill.py
 """
 from __future__ import annotations
 
 import re
 import sys
+import traceback
 from pathlib import Path
 
 import config
@@ -15,7 +19,13 @@ import db
 import settings
 import strm_generator
 
-TOKEN_RE = re.compile(r"/stream/([^/?#\s]+)")
+TOKEN_RE = re.compile(r"/stream/([0-9a-f]{8,32})", re.IGNORECASE)
+
+
+def force_spore_settings() -> None:
+    """Ensure Spore writes to the shared plex-media volume."""
+    settings.set("SPORE_ENABLED", True)
+    settings.set("SPORE_MEDIA_PATH", config.SPORE_MEDIA_PATH or "/data/plex-media")
 
 
 def _spore_enabled() -> bool:
@@ -29,13 +39,19 @@ def _spore_root() -> Path:
 def _token_from_strm(path: Path) -> str | None:
     try:
         text = path.read_text(encoding="utf-8").strip()
-    except OSError:
+    except OSError as exc:
+        print(f"read error {path}: {exc}")
         return None
     match = TOKEN_RE.search(text)
-    return match.group(1) if match else None
+    if match:
+        return match.group(1)
+    print(f"no /stream/<token> in {path}: {text[:120]!r}")
+    return None
 
 
 def _strm_path_for_item(item: dict) -> Path | None:
+    media = Path(config.MEDIA_PATH)
+
     raw = (item.get("strm_path") or "").strip()
     if raw:
         path = Path(raw)
@@ -44,10 +60,8 @@ def _strm_path_for_item(item: dict) -> Path | None:
 
     token = item.get("token")
     if token:
-        media = Path(config.MEDIA_PATH)
         for strm in media.rglob("*.strm"):
-            found = _token_from_strm(strm)
-            if found == token:
+            if _token_from_strm(strm) == token:
                 return strm
 
     title = item.get("title") or ""
@@ -62,7 +76,10 @@ def _strm_path_for_item(item: dict) -> Path | None:
             else strm_generator._safe(title)
         )
         if folder:
-            return Path(config.MEDIA_PATH) / "movies" / folder / f"{folder}.strm"
+            candidate = media / "movies" / folder / f"{folder}.strm"
+            if candidate.exists():
+                return candidate
+            return candidate
 
     if media_type == "series" and title:
         safe = strm_generator._safe(title)
@@ -70,87 +87,88 @@ def _strm_path_for_item(item: dict) -> Path | None:
         episode = item.get("episode")
         if safe and season and episode:
             ep_name = f"{safe} S{int(season):02d}E{int(episode):02d}"
-            return (
-                Path(config.MEDIA_PATH)
-                / "series"
-                / safe
-                / f"Season {int(season):02d}"
-                / f"{ep_name}.strm"
-            )
+            candidate = media / "series" / safe / f"Season {int(season):02d}" / f"{ep_name}.strm"
+            if candidate.exists():
+                return candidate
+            return candidate
     return None
 
 
-def _stub_exists(strm_path: Path) -> bool:
+def _stub_paths(strm_path: Path) -> tuple[Path, Path]:
     stub_dir = strm_generator._spore_stub_dir(strm_path)
-    mkv = stub_dir / (strm_path.stem + ".mkv")
-    minfo = stub_dir / (strm_path.stem + ".minfo")
-    return mkv.exists() and minfo.exists()
+    return stub_dir / (strm_path.stem + ".mkv"), stub_dir / (strm_path.stem + ".minfo")
 
 
-def diagnose() -> None:
+def diagnose() -> list[Path]:
     media = Path(config.MEDIA_PATH)
     strms = list(media.rglob("*.strm")) if media.is_dir() else []
     virtual = db.get_all_virtual_items()
     movies = [r for r in db.get_recent(10000) if r.get("media_type") == "movie"]
     success = [r for r in movies if r.get("status") == "success"]
+    spore_root = _spore_root()
 
     print("=== Mycelium Spore diagnose ===")
     print(f"SPORE_ENABLED (effective): {_spore_enabled()}")
-    print(f"SPORE_MEDIA_PATH: {_spore_root()}")
+    print(f"SPORE_MEDIA_PATH (effective): {spore_root}")
     print(f"MEDIA_PATH: {config.MEDIA_PATH}")
     print(f".strm files on disk: {len(strms)}")
     print(f"virtual_items in DB: {len(virtual)}")
-    print(f"movie requests (all): {len(movies)}")
     print(f"movie requests (success): {len(success)}")
-    print(f"existing stubs in plex-media: {len(list(_spore_root().rglob('*.mkv'))) if _spore_root().is_dir() else 0}")
+    stubs = list(spore_root.rglob("*.mkv")) if spore_root.is_dir() else []
+    print(f"existing stubs in plex-media: {len(stubs)}")
 
-    if not _spore_enabled():
-        print("\nERROR: SPORE_ENABLED is false.")
-        print("Fix: Mycelium Admin → Settings → enable Spore, or set SPORE_ENABLED=true in compose and restart.")
-
-    if not strms and success:
-        print("\nWARN: Requests show success but no .strm files exist.")
-        print("Try: Mycelium Admin → Maintenance → TorBox library scan")
-        print("Or request the title again after enabling CATBOX_LAZY_ADD=true")
-
-    if not virtual and success:
-        print("\nWARN: No virtual_items — catbox tokens missing. Stubs need tokens from the DB.")
-
-    for label, path in [("movies strm dir", media / "movies"), ("plex-media movies", _spore_root() / "movies")]:
+    for label, path in [("movies strm dir", media / "movies"), ("plex-media root", spore_root)]:
         print(f"{label}: {path} ({'exists' if path.is_dir() else 'MISSING'})")
+
+    if strms:
+        print("\nSample .strm files:")
+        for strm in strms[:5]:
+            print(f"  {strm}")
+            try:
+                print(f"    -> {strm.read_text(encoding='utf-8').strip()[:100]}")
+            except OSError as exc:
+                print(f"    -> read error: {exc}")
+
+    missing = []
+    for strm in strms:
+        mkv, _ = _stub_paths(strm)
+        if not mkv.exists():
+            missing.append(strm)
+    print(f"\n.strm without matching stub: {len(missing)}")
+    return missing
 
 
 def create_stub(strm_path: Path, item: dict) -> bool:
-    token = item.get("token")
+    token = item.get("token") or _token_from_strm(strm_path)
     if not token:
-        token = _token_from_strm(strm_path)
-    if not token:
-        print(f"skip (no token): {strm_path}")
         return False
-    if _stub_exists(strm_path):
+
+    mkv_path, minfo_path = _stub_paths(strm_path)
+    if mkv_path.exists() and minfo_path.exists():
         return False
-    strm_generator._write_spore_stubs(
-        strm_path,
-        token,
-        item.get("title") or strm_path.stem,
-        item.get("quality"),
-        item.get("size_gb"),
-    )
-    stub = strm_generator._spore_stub_dir(strm_path) / (strm_path.stem + ".mkv")
-    if stub.exists():
-        print(f"created: {stub}")
+
+    try:
+        strm_generator._write_spore_stubs(
+            strm_path,
+            token,
+            item.get("title") or strm_path.stem,
+            item.get("quality"),
+            item.get("size_gb"),
+        )
+    except Exception as exc:
+        print(f"ERROR writing stub for {strm_path}: {exc}")
+        traceback.print_exc()
+        return False
+
+    if mkv_path.exists():
+        print(f"created: {mkv_path}")
         return True
-    print(f"failed (no file after write): {stub}")
+
+    print(f"FAILED (no file after write): {mkv_path}")
     return False
 
 
-def main() -> int:
-    diagnose()
-    print()
-
-    if not _spore_enabled():
-        return 1
-
+def backfill_all() -> int:
     created = 0
     seen: set[str] = set()
 
@@ -158,21 +176,7 @@ def main() -> int:
     print(strm_generator.backfill_spore_stubs())
     print()
 
-    print("=== Phase 2: all virtual_items ===")
-    for item in db.get_all_virtual_items():
-        strm_path = _strm_path_for_item(item)
-        if not strm_path:
-            print(f"skip virtual_item (no path): token={item.get('token')} title={item.get('title')!r}")
-            continue
-        key = f"{item.get('token')}:{strm_path}"
-        if key in seen:
-            continue
-        seen.add(key)
-        if create_stub(strm_path, item):
-            created += 1
-
-    print()
-    print("=== Phase 3: scan .strm files for tokens ===")
+    print("=== Phase 2: every .strm on disk ===")
     media = Path(config.MEDIA_PATH)
     for strm in sorted(media.rglob("*.strm")) if media.is_dir() else []:
         token = _token_from_strm(strm)
@@ -182,49 +186,45 @@ def main() -> int:
         if key in seen:
             continue
         seen.add(key)
-        item = db.get_virtual_item(token) or {"token": token, "title": strm.stem}
+        item = db.get_virtual_item(token) or {"token": token, "title": strm.parent.name}
         if create_stub(strm, item):
             created += 1
 
     print()
-    print("=== Phase 4: successful movie requests ===")
-    for req in db.get_recent(10000):
-        if req.get("media_type") != "movie" or req.get("status") != "success":
+    print("=== Phase 3: virtual_items missing stubs ===")
+    for item in db.get_all_virtual_items():
+        strm_path = _strm_path_for_item(item)
+        if not strm_path:
+            print(f"skip virtual_item: token={item.get('token')} title={item.get('title')!r}")
             continue
-        imdb_id = req.get("imdb_id")
-        if not imdb_id:
+        key = f"{item.get('token')}:{strm_path}"
+        if key in seen:
             continue
-        items = db.get_virtual_items_by_imdb(imdb_id, media_type="movie")
-        if items:
-            for item in items:
-                strm_path = _strm_path_for_item(item)
-                if not strm_path:
-                    continue
-                key = f"{item.get('token')}:{strm_path}"
-                if key in seen:
-                    continue
-                seen.add(key)
-                if create_stub(strm_path, item):
-                    created += 1
-            continue
+        seen.add(key)
+        if create_stub(strm_path, item):
+            created += 1
 
-        info_hash = (req.get("info_hash") or "").lower()
-        if info_hash:
-            for item in db.get_virtual_items_by_hash(info_hash):
-                strm_path = _strm_path_for_item(item)
-                if not strm_path:
-                    continue
-                key = f"{item.get('token')}:{strm_path}"
-                if key in seen:
-                    continue
-                seen.add(key)
-                if create_stub(strm_path, item):
-                    created += 1
+    return created
 
+
+def main() -> int:
+    force_spore_settings()
+    missing = diagnose()
     print()
-    print(f"=== Done: {created} stub(s) created ===")
-    print(f"Stubs now in: {_spore_root()}")
-    return 0 if created > 0 or list(_spore_root().rglob("*.mkv")) else 1
+
+    if not missing and not list(_spore_root().rglob("*.mkv")):
+        print("No .strm files found under MEDIA_PATH.")
+        print("Request media in Seerr or run TorBox library scan in Mycelium Admin.")
+        return 1
+
+    created = backfill_all()
+    stubs = list(_spore_root().rglob("*.mkv"))
+    print()
+    print(f"=== Done: {created} new stub(s); {len(stubs)} total in {_spore_root()} ===")
+    if stubs:
+        print("Next: ./manage.sh plex-scan")
+        return 0
+    return 1
 
 
 if __name__ == "__main__":

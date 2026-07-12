@@ -242,7 +242,7 @@ cd "$(dirname "$0")"
 [[ -f .stack-env ]] && source .stack-env
 COMPOSE=(docker compose)
 usage() {
-  echo "Usage: ./manage.sh {start|stop|restart|status|logs|urls|update|claim-plex|test-webhook|plex-scan|check-media|spore-backfill}"
+  echo "Usage: ./manage.sh {start|stop|restart|status|logs|urls|update|claim-plex|test-webhook|plex-scan|check-media|spore-backfill|sync-plex|fix-perms}"
 }
 pref_file() {
   echo "$(pwd)/plex/Library/Application Support/Plex Media Server/Preferences.xml"
@@ -372,13 +372,27 @@ EOF
     if [[ ! -f "${script}" ]]; then
       echo "Downloading spore-backfill.py ..."
       curl -fsSL "${REPO_RAW}/unraid/spore-backfill.py" -o "${script}" || \
-        curl -fsSL "https://raw.githubusercontent.com/killamfkr/Cellar-loader/1d32249/mycelium-media-stack/unraid/spore-backfill.py" -o "${script}"
+        curl -fsSL "https://raw.githubusercontent.com/killamfkr/Cellar-loader/main/mycelium-media-stack/unraid/spore-backfill.py" -o "${script}"
       chmod +x "${script}"
     fi
     echo "Generating Spore .mkv stubs in plex-media ..."
     docker compose cp "${script}" mycelium:/app/spore-backfill.py
-    docker compose exec -T -w /app mycelium python3 /app/spore-backfill.py || true
-    echo "Run ./manage.sh plex-scan after stubs appear."
+    if ! docker compose exec -T -w /app mycelium python3 /app/spore-backfill.py; then
+      echo "Retrying as root (permission fix) ..."
+      docker compose exec -T -u root -w /app mycelium python3 /app/spore-backfill.py || true
+    fi
+  fix-perms)
+    puid="${PUID:-99}"
+    pgid="${PGID:-100}"
+    echo "Fixing ownership on plex-media and mycelium data (${puid}:${pgid}) ..."
+    chown -R "${puid}:${pgid}" "$(pwd)/plex-media" "$(pwd)/mycelium" 2>/dev/null || true
+    echo "Done."
+    ;;
+  sync-plex)
+    "${BASH_SOURCE[0]:-$0}" spore-backfill
+    "${BASH_SOURCE[0]:-$0}" fix-perms
+    "${BASH_SOURCE[0]:-$0}" plex-scan
+    echo "If Seerr still shows Processing: Settings → Plex → Sync Libraries"
     ;;
   *) usage; exit 1 ;;
 esac
