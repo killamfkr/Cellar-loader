@@ -1,72 +1,38 @@
-# Mycelium + Spore + Plex + *arr stack
+# Mycelium + Spore + Plex + *arr
 
-Self-hosted TorBox media stack using [Mycelium](https://github.com/corveck79/mycelium) Catbox mode and Spore Plex integration.
+TorBox media stack with separate compose files per container. No `.env` files.
 
-## ZimaOS (recommended — Custom App import)
+## ZimaOS
 
-**Easiest path:** one compose file + UI import.
+Each app is imported individually as a ZimaOS Custom App.
 
-| File | Purpose |
-|------|---------|
-| [`zimaos/docker-compose.yml`](zimaos/docker-compose.yml) | Paste into ZimaOS **Install a customized app → Import** |
-| [`zimaos/INSTALL.md`](zimaos/INSTALL.md) | Step-by-step setup guide |
-| [`zimaos/prepare.sh`](zimaos/prepare.sh) | Creates `/DATA/AppData/mycelium-media-stack` folders |
+| Folder | Service |
+|--------|---------|
+| [`zimaos/network/`](zimaos/network/) | Shared Docker network (install first) |
+| [`zimaos/mycelium/`](zimaos/mycelium/) | Mycelium (Catbox + Spore) |
+| [`zimaos/plex/`](zimaos/plex/) | Plex Spore image |
+| [`zimaos/byparr/`](zimaos/byparr/) | Cloudflare bypass |
+| [`zimaos/prowlarr/`](zimaos/prowlarr/) | Indexers |
+| [`zimaos/radarr/`](zimaos/radarr/) | Movies |
+| [`zimaos/sonarr/`](zimaos/sonarr/) | TV |
+| [`zimaos/seerr/`](zimaos/seerr/) | Requests |
 
-### Quick start
-
-```bash
-# Optional: create folders first
-bash mycelium-media-stack/zimaos/prepare.sh
-```
-
-Then in ZimaOS:
-
-1. **+** → **Install a customized app** → **Import** → **Docker Compose**
-2. Paste [`zimaos/docker-compose.yml`](zimaos/docker-compose.yml)
-3. Set `TORBOX_API_KEY`, `TMDB_API_KEY`, `CATBOX_HOST`, `WEBHOOK_SECRET`
-4. **Install** → open Mycelium on port **8088**
-
-Or run the helper:
+**Guide:** [`zimaos/INSTALL.md`](zimaos/INSTALL.md)
 
 ```bash
-bash mycelium-media-stack/install-zimaos.sh
+bash mycelium-media-stack/zimaos/prepare.sh   # optional folder setup
 ```
 
 ## Unraid
 
-| File | Purpose |
-|------|---------|
-| [`unraid/docker-compose.yml`](unraid/docker-compose.yml) | Standard compose for Docker Compose Manager / terminal |
-| [`unraid/.env.example`](unraid/.env.example) | Environment template |
-| [`unraid/INSTALL.md`](unraid/INSTALL.md) | Unraid notes |
-| [`install-unraid.sh`](install-unraid.sh) | Automated installer |
+Same layout under [`unraid/`](unraid/) — see [`unraid/INSTALL.md`](unraid/INSTALL.md).
 
-```bash
-TORBOX_API_KEY=xxx TMDB_API_KEY=yyy bash install-unraid.sh
-```
+## Plex Spore image
 
-## Stack
+Built from [`images/plex-spore/`](images/plex-spore/). Published as `ghcr.io/killamfkr/plex-spore:latest` via GitHub Actions. Spore wrapper is included in the image — no wget at startup.
 
-| Service | Port | Role |
-|---------|------|------|
-| Mycelium | 8088 | TorBox pipeline, Catbox + Spore |
-| Plex | 32400 | Media server (Spore wrapper auto-installed) |
-| Seerr | 5055 | Requests |
-| Radarr | 7878 | Bulk import / list management |
-| Sonarr | 8989 | Bulk import / list management |
-| Prowlarr | 9696 | Indexers |
-| Byparr | 8191 | Cloudflare bypass |
+## Notes
 
-**Note:** Mycelium is the download/stream engine. Radarr/Sonarr are not qBittorrent clients in this stack.
-
-## Management (script install only)
-
-If you used `install-unraid.sh` or an older script-based ZimaOS install:
-
-```bash
-cd <install-dir> && ./manage.sh start|stop|status|logs|urls
-```
-
-## Legal
-
-Stream only content you have the right to access. Comply with TorBox terms and copyright law.
+- Mycelium handles streaming; Radarr/Sonarr are for bulk import, not download clients.
+- All containers join the external `mycelium-media` network.
+- Stream only content you have the right to access.

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Create ZimaOS folder layout for the Mycelium Media Stack compose app.
+# Create folders (and shared network) for the Mycelium media stack on ZimaOS.
 set -euo pipefail
 
 BASE="/DATA/AppData/mycelium-media-stack"
@@ -19,14 +19,26 @@ PUID="${PUID:-1000}"
 PGID="${PGID:-1000}"
 chown -R "${PUID}:${PGID}" "${BASE}" 2>/dev/null || sudo chown -R "${PUID}:${PGID}" "${BASE}" || true
 
-cat <<EOF
-Done.
+if command -v docker &>/dev/null; then
+  docker network create mycelium-media 2>/dev/null || true
+  echo "Docker network 'mycelium-media' ready."
+fi
 
-Next:
-  1. ZimaOS → + → Install a customized app → Import
-  2. Paste docker-compose.yml from mycelium-media-stack/zimaos/
-  3. Set TORBOX_API_KEY, TMDB_API_KEY, CATBOX_HOST, WEBHOOK_SECRET
-  4. Install
+cat <<'EOF'
+Folders ready.
 
-Full guide: mycelium-media-stack/zimaos/INSTALL.md
+Import each compose separately in ZimaOS (Install a customized app → Import):
+
+  1. zimaos/network/docker-compose.yml
+  2. zimaos/mycelium/docker-compose.yml   ← set API keys here
+  3. zimaos/plex/docker-compose.yml
+  4. zimaos/byparr/docker-compose.yml
+  5. zimaos/prowlarr/docker-compose.yml
+  6. zimaos/radarr/docker-compose.yml
+  7. zimaos/sonarr/docker-compose.yml
+  8. zimaos/seerr/docker-compose.yml
+
+No .env files — edit variables in the ZimaOS app settings UI.
+
+Full guide: zimaos/INSTALL.md
 EOF

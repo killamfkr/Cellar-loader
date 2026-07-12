@@ -1,0 +1,43 @@
+name: prowlarr
+
+services:
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    restart: unless-stopped
+    networks:
+      - mycelium-media
+    ports:
+      - target: 9696
+        published: "9696"
+        protocol: tcp
+    environment:
+      PUID: $PUID
+      PGID: $PGID
+      TZ: $TZ
+    volumes:
+      - type: bind
+        source: /DATA/AppData/mycelium-media-stack/prowlarr
+        target: /config
+
+networks:
+  mycelium-media:
+    external: true
+
+x-casaos:
+  app_id: com.cellarloader.prowlarr
+  main: prowlarr
+  author: Cellar-loader
+  developer: LinuxServer.io
+  category: Media
+  description:
+    en_us: Indexer manager for the Mycelium media stack. Install Byparr alongside for Cloudflare sites.
+  tagline:
+    en_us: Prowlarr for Mycelium stack
+  icon: https://cdn.jsdelivr.net/gh/IceWhaleTech/CasaOS-AppStore@main/Apps/Prowlarr/icon.svg
+  index: /
+  scheme: http
+  port_map: "9696"
+  store_app_id: prowlarr
+  title:
+    en_us: Prowlarr

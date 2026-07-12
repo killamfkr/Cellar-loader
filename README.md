@@ -1,7 +1,5 @@
 # Cellar-loader
 
-## Mycelium media stack installers
+## Mycelium media stack
 
-**ZimaOS:** import [`mycelium-media-stack/zimaos/docker-compose.yml`](mycelium-media-stack/zimaos/docker-compose.yml) as a Custom App — see [`zimaos/INSTALL.md`](mycelium-media-stack/zimaos/INSTALL.md).
-
-**Unraid:** see [`mycelium-media-stack/unraid/INSTALL.md`](mycelium-media-stack/unraid/INSTALL.md).
+Separate compose files per container — no `.env` files. ZimaOS guide: [`mycelium-media-stack/zimaos/INSTALL.md`](mycelium-media-stack/zimaos/INSTALL.md)

@@ -1,0 +1,15 @@
+name: mycelium-media-network
+
+services:
+  network-hold:
+    image: alpine:3.20
+    container_name: mycelium-media-network
+    command: sleep infinity
+    restart: unless-stopped
+    networks:
+      - mycelium-media
+
+networks:
+  mycelium-media:
+    name: mycelium-media
+    driver: bridge

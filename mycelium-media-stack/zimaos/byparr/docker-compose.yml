@@ -1,0 +1,39 @@
+name: byparr
+
+services:
+  byparr:
+    image: ghcr.io/thephaseless/byparr:latest
+    container_name: byparr
+    restart: unless-stopped
+    networks:
+      - mycelium-media
+    ports:
+      - target: 8191
+        published: "8191"
+        protocol: tcp
+    environment:
+      LOG_LEVEL: info
+      LOG_HTML: "false"
+      TZ: $TZ
+
+networks:
+  mycelium-media:
+    external: true
+
+x-casaos:
+  app_id: com.cellarloader.byparr
+  main: byparr
+  author: Cellar-loader
+  category: Network
+  description:
+    en_us: Cloudflare bypass proxy for Prowlarr indexers.
+  tagline:
+    en_us: Byparr for Prowlarr
+  icon: https://cdn.jsdelivr.net/gh/IceWhaleTech/CasaOS-AppStore@main/Apps/Prowlarr/icon.svg
+  index: /
+  scheme: http
+  port_map: "8191"
+  store_app_id: byparr
+  is_uncontrolled: true
+  title:
+    en_us: Byparr

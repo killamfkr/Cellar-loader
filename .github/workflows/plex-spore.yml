@@ -1,0 +1,33 @@
+name: Build plex-spore image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'mycelium-media-stack/images/plex-spore/**'
+      - '.github/workflows/plex-spore.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: mycelium-media-stack/images/plex-spore
+          push: true
+          tags: |
+            ghcr.io/killamfkr/plex-spore:latest
+            ghcr.io/killamfkr/plex-spore:${{ github.sha }}

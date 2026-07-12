@@ -1,0 +1,46 @@
+name: seerr
+
+services:
+  seerr:
+    image: ghcr.io/seerr-team/seerr:latest
+    container_name: seerr
+    restart: unless-stopped
+    networks:
+      - mycelium-media
+    ports:
+      - target: 5055
+        published: "5055"
+        protocol: tcp
+    environment:
+      TZ: $TZ
+    volumes:
+      - type: bind
+        source: /DATA/AppData/mycelium-media-stack/seerr
+        target: /app/config
+
+networks:
+  mycelium-media:
+    external: true
+
+x-casaos:
+  app_id: com.cellarloader.seerr
+  main: seerr
+  author: Cellar-loader
+  developer: Seerr Team
+  category: Media
+  description:
+    en_us: Request UI for Plex. Webhook to Mycelium at http://mycelium:8088/webhook
+  tagline:
+    en_us: Seerr for Mycelium stack
+  icon: https://cdn.jsdelivr.net/gh/IceWhaleTech/CasaOS-AppStore@main/Apps/Overseerr/icon.svg
+  index: /
+  scheme: http
+  port_map: "5055"
+  store_app_id: seerr
+  tips:
+    before_install:
+      en_us: |
+        Install Plex, Radarr, and Sonarr first.
+        After setup, add webhook http://mycelium:8088/webhook with your WEBHOOK_SECRET header.
+  title:
+    en_us: Seerr

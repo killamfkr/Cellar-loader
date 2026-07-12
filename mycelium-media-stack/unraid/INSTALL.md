@@ -1,33 +1,51 @@
-# Unraid — Mycelium Media Stack
+# Unraid install — Mycelium media stack
 
-## Quick install (terminal)
+Separate compose files per container. **No `.env` files** — edit values directly in each `docker-compose.yml` before starting.
+
+Plex uses `ghcr.io/killamfkr/plex-spore` (Spore pre-baked in the image, no runtime downloads).
+
+## Prepare
 
 ```bash
 mkdir -p /mnt/user/appdata/mycelium-media-stack/{mycelium,plex-media/movies,plex-media/tv,plex,prowlarr,radarr,sonarr,seerr}
-cd /mnt/user/appdata/mycelium-media-stack
-# copy docker-compose.yml and .env.example from this folder, then:
-cp .env.example .env
-# edit .env — set TORBOX_API_KEY, TMDB_API_KEY, CATBOX_HOST, WEBHOOK_SECRET
-docker compose up -d
+docker network create mycelium-media 2>/dev/null || true
 ```
 
-## Or use the installer script
+## Start (in order)
+
+Edit `mycelium/docker-compose.yml` first — set `TORBOX_API_KEY`, `TMDB_API_KEY`, `CATBOX_HOST`, `WEBHOOK_SECRET`.
 
 ```bash
-git clone https://github.com/killamfkr/Cellar-loader.git
-cd Cellar-loader/mycelium-media-stack
-TORBOX_API_KEY=xxx TMDB_API_KEY=yyy bash install-unraid.sh
+cd /path/to/Cellar-loader/mycelium-media-stack/unraid
+
+docker compose -f network/docker-compose.yml up -d
+docker compose -f mycelium/docker-compose.yml up -d
+docker compose -f plex/docker-compose.yml up -d
+docker compose -f byparr/docker-compose.yml up -d
+docker compose -f prowlarr/docker-compose.yml up -d
+docker compose -f radarr/docker-compose.yml up -d
+docker compose -f sonarr/docker-compose.yml up -d
+docker compose -f seerr/docker-compose.yml up -d
 ```
+
+Or import each file into **Docker Compose Manager** on Unraid.
 
 ## Service URLs
 
 | Service | URL |
 |---------|-----|
-| Mycelium | `http://<UNRAID-IP>:8088` |
-| Plex | `http://<UNRAID-IP>:32400/web` |
-| Seerr | `http://<UNRAID-IP>:5055` |
-| Radarr | `http://<UNRAID-IP>:7878` |
-| Sonarr | `http://<UNRAID-IP>:8989` |
-| Prowlarr | `http://<UNRAID-IP>:9696` |
+| Mycelium | `http://<IP>:8088` |
+| Plex | `http://<IP>:32400/web` |
+| Seerr | `http://<IP>:5055` |
+| Radarr | `http://<IP>:7878` |
+| Sonarr | `http://<IP>:8989` |
+| Prowlarr | `http://<IP>:9696` |
 
-See the ZimaOS guide for post-install steps (Mycelium wizard, Plex libraries, Seerr webhook) — the flow is the same.
+Post-install steps match the [ZimaOS guide](../zimaos/INSTALL.md).
+
+## Build Plex Spore image locally (if needed)
+
+```bash
+cd mycelium-media-stack/images/plex-spore
+docker build -t ghcr.io/killamfkr/plex-spore:latest .
+```

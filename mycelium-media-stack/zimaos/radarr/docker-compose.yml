@@ -1,0 +1,43 @@
+name: radarr
+
+services:
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    restart: unless-stopped
+    networks:
+      - mycelium-media
+    ports:
+      - target: 7878
+        published: "7878"
+        protocol: tcp
+    environment:
+      PUID: $PUID
+      PGID: $PGID
+      TZ: $TZ
+    volumes:
+      - type: bind
+        source: /DATA/AppData/mycelium-media-stack/radarr
+        target: /config
+
+networks:
+  mycelium-media:
+    external: true
+
+x-casaos:
+  app_id: com.cellarloader.radarr
+  main: radarr
+  author: Cellar-loader
+  developer: LinuxServer.io
+  category: Media
+  description:
+    en_us: Movie list manager. Connect to Mycelium Admin for bulk import (not a download client).
+  tagline:
+    en_us: Radarr for Mycelium stack
+  icon: https://cdn.jsdelivr.net/gh/IceWhaleTech/CasaOS-AppStore@main/Apps/Radarr/icon.svg
+  index: /
+  scheme: http
+  port_map: "7878"
+  store_app_id: radarr
+  title:
+    en_us: Radarr

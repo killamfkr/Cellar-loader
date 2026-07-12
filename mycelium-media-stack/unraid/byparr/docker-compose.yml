@@ -1,0 +1,19 @@
+name: byparr
+
+services:
+  byparr:
+    image: ghcr.io/thephaseless/byparr:latest
+    container_name: byparr
+    restart: unless-stopped
+    networks:
+      - mycelium-media
+    ports:
+      - "8191:8191"
+    environment:
+      LOG_LEVEL: info
+      LOG_HTML: "false"
+      TZ: ${TZ:-UTC}
+
+networks:
+  mycelium-media:
+    external: true

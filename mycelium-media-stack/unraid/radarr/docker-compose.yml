@@ -1,0 +1,21 @@
+name: radarr
+
+services:
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    restart: unless-stopped
+    networks:
+      - mycelium-media
+    ports:
+      - "7878:7878"
+    environment:
+      PUID: ${PUID:-99}
+      PGID: ${PGID:-100}
+      TZ: ${TZ:-UTC}
+    volumes:
+      - /mnt/user/appdata/mycelium-media-stack/radarr:/config
+
+networks:
+  mycelium-media:
+    external: true

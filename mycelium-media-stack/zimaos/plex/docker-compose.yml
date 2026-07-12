@@ -1,0 +1,60 @@
+name: plex-spore
+
+services:
+  plex:
+    image: ghcr.io/killamfkr/plex-spore:latest
+    container_name: plex
+    restart: unless-stopped
+    networks:
+      - mycelium-media
+    ports:
+      - target: 32400
+        published: "32400"
+        protocol: tcp
+    environment:
+      PUID: $PUID
+      PGID: $PGID
+      TZ: $TZ
+      VERSION: docker
+      PLEX_CLAIM: $PLEX_CLAIM
+      x-casaos:
+        envs:
+          - container: PLEX_CLAIM
+            description:
+              en_us: Optional claim token from plex.tv/claim (expires in ~4 minutes).
+    volumes:
+      - type: bind
+        source: /DATA/AppData/mycelium-media-stack/plex
+        target: /config
+      - type: bind
+        source: /DATA/AppData/mycelium-media-stack/plex-media
+        target: /plex-media
+        read_only: true
+
+networks:
+  mycelium-media:
+    external: true
+
+x-casaos:
+  app_id: com.cellarloader.plex-spore
+  main: plex
+  author: Cellar-loader
+  developer: LinuxServer.io
+  category: Media
+  description:
+    en_us: Plex with Mycelium Spore transcoder wrapper pre-installed. No runtime downloads.
+  tagline:
+    en_us: Plex + Spore for Mycelium
+  icon: https://cdn.jsdelivr.net/gh/IceWhaleTech/CasaOS-AppStore@main/Apps/Plex/icon.svg
+  index: /web
+  scheme: http
+  port_map: "32400"
+  store_app_id: plex-spore
+  tips:
+    before_install:
+      en_us: |
+        Install **Mycelium Media Network** and **Mycelium** first.
+        Add Plex libraries at /plex-media/movies and /plex-media/tv after install.
+        Spore is experimental — Linux/desktop Plex clients work best.
+  title:
+    en_us: Plex Spore
