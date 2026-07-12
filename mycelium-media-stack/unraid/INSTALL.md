@@ -49,6 +49,55 @@ cd /mnt/user/appdata/mycelium-media-stack
 5. **Mycelium Admin → Integrations** — connect Radarr and Sonarr (bulk import from lists)
 6. Configure **Seerr** — use `http://192.168.0.100` for all service URLs; webhook secret is in `.stack-env`
 
+### Seerr webhook (request → Mycelium)
+
+In Seerr: **Settings → Notifications → Webhook**
+
+| Field | Value |
+|-------|-------|
+| Webhook URL | `http://192.168.0.100:8088/webhook?secret=YOUR_SECRET` |
+| Triggers | Enable **Request Approved** (minimum) |
+
+Get `YOUR_SECRET` from either:
+
+```bash
+cd /mnt/user/appdata/mycelium-media-stack
+grep WEBHOOK_SECRET .stack-env
+```
+
+or **Mycelium Admin → Settings → Integration Endpoints** (must match).
+
+Verify from Unraid terminal:
+
+```bash
+cd /mnt/user/appdata/mycelium-media-stack
+./manage.sh test-webhook
+```
+
+A successful test returns HTTP 200 with `"status":"ignored"` (Mycelium ignores test pings — that is normal).
+
+Also in **Mycelium Admin → Settings**, set:
+
+- `SEERR_URL` = `http://192.168.0.100:5055`
+- `SEERR_API_KEY` = from Seerr → Settings → General → API Key
+
+Restart Mycelium after changing those.
+
+## Webhook test failed in Seerr
+
+1. **Secret missing or wrong** — most common. Use the full URL with `?secret=` (Seerr cannot rely on headers alone on all versions).
+2. **Secret mismatch** — `.stack-env` must match Mycelium Admin → Integration Endpoints. If they differ, copy the value from Mycelium admin and update Seerr.
+3. **Mycelium not reachable** — run `./manage.sh test-webhook` from the install dir. If that fails, check `docker compose ps` and `docker compose logs mycelium`.
+4. **Wrong URL** — must be `http://192.168.0.100:8088/webhook` (not `/webhooks`, not `https://`, not `localhost` from another device).
+
+Check Mycelium logs while testing in Seerr:
+
+```bash
+docker compose logs -f mycelium | grep -i webhook
+```
+
+`Rejected webhook with bad/missing secret` = fix the `?secret=` value.
+
 ## Plex: "You do not have access to this server"
 
 Plex must be **claimed** to your Plex account. The setup script does not do this automatically.

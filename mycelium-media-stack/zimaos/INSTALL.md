@@ -87,7 +87,32 @@ Use **LAN IPs** (not docker names) when connecting services:
 | Plex | `http://192.168.1.50:32400` |
 | Radarr | `http://192.168.1.50:7878` |
 | Sonarr | `http://192.168.1.50:8989` |
-| Webhook | `http://192.168.1.50:8088/webhook` + `X-Webhook-Secret` header |
+
+### Webhook → Mycelium
+
+**Settings → Notifications → Webhook**
+
+| Field | Value |
+|-------|-------|
+| Webhook URL | `http://192.168.1.50:8088/webhook?secret=YOUR_SECRET` |
+| Triggers | Enable **Request Approved** |
+
+`YOUR_SECRET` must match **Mycelium Admin → Settings → Integration Endpoints** (same value as `WEBHOOK_SECRET` in the Mycelium app).
+
+Test from SSH:
+
+```bash
+curl -sS -X POST "http://192.168.1.50:8088/webhook?secret=YOUR_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"notification_type":"TEST_NOTIFICATION"}'
+```
+
+Expected: HTTP 200, `{"status":"ignored","reason":"test notification"}` — Seerr should then show the test as sent.
+
+Also set in **Mycelium Admin → Settings**:
+
+- `SEERR_URL` = `http://192.168.1.50:5055`
+- `SEERR_API_KEY` = from Seerr → Settings → General
 
 ---
 

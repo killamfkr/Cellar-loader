@@ -229,7 +229,7 @@ cd "$(dirname "$0")"
 [[ -f .stack-env ]] && source .stack-env
 COMPOSE=(docker compose)
 usage() {
-  echo "Usage: ./manage.sh {start|stop|restart|status|logs|urls|update|claim-plex}"
+  echo "Usage: ./manage.sh {start|stop|restart|status|logs|urls|update|claim-plex|test-webhook}"
 }
 pref_file() {
   echo "$(pwd)/plex/Library/Application Support/Plex Media Server/Preferences.xml"
@@ -264,6 +264,8 @@ case "${cmd}" in
     ;;
   urls)
     ip="${HOST_IP:-192.168.0.100}"
+    secret=""
+    [[ -f .stack-env ]] && secret="$(grep '^WEBHOOK_SECRET=' .stack-env | cut -d= -f2-)"
     cat <<EOF
 Mycelium: http://${ip}:8088
 Plex:     http://${ip}:32400/web
@@ -272,7 +274,35 @@ Radarr:   http://${ip}:7878
 Sonarr:   http://${ip}:8989
 Prowlarr: http://${ip}:9696
 EOF
-    [[ -f .stack-env ]] && echo "Webhook secret: $(grep WEBHOOK_SECRET .stack-env | cut -d= -f2-)"
+    if [[ -n "${secret}" ]]; then
+      echo "Seerr webhook URL:"
+      echo "  http://${ip}:8088/webhook?secret=${secret}"
+    fi
+    [[ -f .stack-env ]] && echo "Webhook secret: ${secret:-$(grep WEBHOOK_SECRET .stack-env | cut -d= -f2-)}"
+    ;;
+  test-webhook)
+    ip="${HOST_IP:-192.168.0.100}"
+    secret=""
+    [[ -f .stack-env ]] && secret="$(grep '^WEBHOOK_SECRET=' .stack-env | cut -d= -f2-)"
+    if [[ -z "${secret}" ]]; then
+      echo "No WEBHOOK_SECRET in .stack-env — copy it from Mycelium Admin → Settings → Integration Endpoints"
+      exit 1
+    fi
+    echo "POST http://${ip}:8088/webhook?secret=..."
+    resp="$(curl -sS -w '\n%{http_code}' -X POST \
+      "http://${ip}:8088/webhook?secret=${secret}" \
+      -H 'Content-Type: application/json' \
+      -d '{"notification_type":"TEST_NOTIFICATION"}')"
+    body="${resp%$'\n'*}"
+    code="${resp##*$'\n'}"
+    echo "HTTP ${code}"
+    echo "${body}"
+    if [[ "${code}" == "200" || "${code}" == "202" ]]; then
+      echo "OK — use this URL in Seerr: http://${ip}:8088/webhook?secret=${secret}"
+    else
+      echo "Failed — compare secret with Mycelium Admin → Settings → Integration Endpoints"
+      exit 1
+    fi
     ;;
   *) usage; exit 1 ;;
 esac
@@ -321,9 +351,11 @@ ${CYAN}Services (192.168.0.100)${NC}
   Sonarr    http://${HOST_IP}:8989
   Prowlarr  http://${HOST_IP}:9696
 
-${CYAN}Seerr webhook${NC}
-  URL:    http://${HOST_IP}:8088/webhook
-  Header: X-Webhook-Secret: ${WEBHOOK_SECRET:-see .stack-env}
+${CYAN}Seerr webhook (Settings → Notifications → Webhook)${NC}
+  URL:     http://${HOST_IP}:8088/webhook?secret=${WEBHOOK_SECRET:-see-.stack-env}
+  Triggers: enable "Request Approved" (and optionally "Request Pending")
+  Note:    secret must match Mycelium Admin → Settings → Integration Endpoints
+  Test:    cd ${INSTALL_DIR} && ./manage.sh test-webhook
 
 ${CYAN}Plex — claim your server${NC}
   If you see "You do not have access to this server":

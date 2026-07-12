@@ -36,6 +36,7 @@ x-casaos:
     before_install:
       en_us: |
         Install Plex, Radarr, and Sonarr first.
-        Webhook URL uses your LAN IP: http://YOUR-IP:8088/webhook
+        Webhook URL: http://YOUR-IP:8088/webhook?secret=YOUR_SECRET
+        (secret from Mycelium Admin → Settings → Integration Endpoints)
   title:
     en_us: Seerr
