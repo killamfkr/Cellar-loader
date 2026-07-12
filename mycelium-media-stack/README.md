@@ -1,8 +1,17 @@
 # Mycelium + Spore + Plex + *arr
 
-TorBox media stack with separate compose files per container. No `.env` files.
+## Mycelium only (ZimaOS / CasaOS)
 
-## ZimaOS
+Single self-contained compose for [corveck79/mycelium](https://github.com/corveck79/mycelium):
+
+- [`casaos/docker-compose.yml`](casaos/docker-compose.yml) — paste into Custom App import
+- [`casaos/README.md`](casaos/README.md) — install guide
+
+```
+https://raw.githubusercontent.com/killamfkr/Cellar-loader/main/mycelium-media-stack/casaos/docker-compose.yml
+```
+
+## Full stack (ZimaOS)
 
 Each app is imported individually as a ZimaOS Custom App.
 

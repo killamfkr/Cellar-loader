@@ -1,5 +1,7 @@
 # Cellar-loader
 
-## Mycelium media stack
+## Mycelium (ZimaOS / CasaOS)
 
-Separate compose files per container — no `.env` files. ZimaOS guide: [`mycelium-media-stack/zimaos/INSTALL.md`](mycelium-media-stack/zimaos/INSTALL.md)
+Single-file install: [`mycelium-media-stack/casaos/docker-compose.yml`](mycelium-media-stack/casaos/docker-compose.yml)
+
+Full stack guide: [`mycelium-media-stack/zimaos/INSTALL.md`](mycelium-media-stack/zimaos/INSTALL.md)
