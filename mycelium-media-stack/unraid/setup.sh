@@ -242,7 +242,7 @@ cd "$(dirname "$0")"
 [[ -f .stack-env ]] && source .stack-env
 COMPOSE=(docker compose)
 usage() {
-  echo "Usage: ./manage.sh {start|stop|restart|status|logs|urls|update|claim-plex|test-webhook|plex-scan|check-media|spore-backfill|sync-plex|fix-perms}"
+  echo "Usage: ./manage.sh {start|stop|restart|status|logs|urls|update|claim-plex|test-webhook|plex-scan|check-media|spore-backfill|sync-plex|sync-strm-fallback|fix-perms}"
 }
 pref_file() {
   echo "$(pwd)/plex/Library/Application Support/Plex Media Server/Preferences.xml"
@@ -388,8 +388,39 @@ EOF
     chown -R "${puid}:${pgid}" "$(pwd)/plex-media" "$(pwd)/mycelium" 2>/dev/null || true
     echo "Done."
     ;;
+  sync-strm-fallback)
+    # Last resort: mirror .strm files into plex-media (Spore wrapper plays .strm too).
+    src="$(pwd)/mycelium/media"
+    dst="$(pwd)/plex-media"
+    if [[ ! -d "${src}/movies" ]]; then
+      echo "No mycelium/media/movies — nothing to mirror"
+      exit 1
+    fi
+    echo "Mirroring movie .strm files into plex-media/movies ..."
+    find "${src}/movies" -name '*.strm' | while IFS= read -r strm; do
+      rel="${strm#${src}/}"
+      out="${dst}/${rel}"
+      mkdir -p "$(dirname "${out}")"
+      cp -f "${strm}" "${out}"
+    done
+    if [[ -d "${src}/series" ]]; then
+      echo "Mirroring series .strm files into plex-media/tv ..."
+      find "${src}/series" -name '*.strm' | while IFS= read -r strm; do
+        rel="${strm#${src}/series/}"
+        out="${dst}/tv/${rel}"
+        mkdir -p "$(dirname "${out}")"
+        cp -f "${strm}" "${out}"
+      done
+    fi
+  ;;
   sync-plex)
     "${BASH_SOURCE[0]:-$0}" spore-backfill
+    stub_count="$(find "$(pwd)/plex-media" -name '*.mkv' 2>/dev/null | wc -l | tr -d ' ')"
+    strm_count="$(find "$(pwd)/mycelium/media" -name '*.strm' 2>/dev/null | wc -l | tr -d ' ')"
+    if [[ "${stub_count}" == "0" && "${strm_count}" != "0" ]]; then
+      echo "No Spore stubs created but ${strm_count} .strm file(s) exist — mirroring .strm into plex-media ..."
+      "${BASH_SOURCE[0]:-$0}" sync-strm-fallback
+    fi
     "${BASH_SOURCE[0]:-$0}" fix-perms
     "${BASH_SOURCE[0]:-$0}" plex-scan
     echo "If Seerr still shows Processing: Settings → Plex → Sync Libraries"

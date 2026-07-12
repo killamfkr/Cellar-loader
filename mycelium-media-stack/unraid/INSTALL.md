@@ -105,17 +105,17 @@ If a title shows in Mycelium but `plex-media/movies/` is empty, generate the stu
 
 ```bash
 cd /mnt/user/appdata/mycelium-media-stack
-./manage.sh spore-backfill
-./manage.sh plex-scan
+./manage.sh sync-plex
 ```
+
+`sync-plex` runs spore-backfill, fixes permissions, mirrors `.strm` files as a fallback if stub creation fails, then triggers a Plex scan.
 
 Or in Mycelium Admin → **Classic → Maintenance → Spore backfill** (if available).
 
 ```bash
 cd /mnt/user/appdata/mycelium-media-stack
 ./manage.sh check-media    # compare strm vs stub counts
-./manage.sh spore-backfill # create missing Plex stubs
-./manage.sh plex-scan      # force Plex library scan
+./manage.sh sync-plex      # backfill stubs + plex scan (preferred)
 ```
 
 In **Mycelium Admin** (`http://192.168.0.100:8088/admin`), confirm the request shows as added (not failed/wanted).
