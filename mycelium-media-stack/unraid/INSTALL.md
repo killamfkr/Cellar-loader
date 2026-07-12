@@ -35,8 +35,25 @@ TORBOX_API_KEY="your-key" TMDB_API_KEY="your-token" bash Cellar-loader/mycelium-
 cd /mnt/user/appdata/mycelium-media-stack
 ./manage.sh urls
 ./manage.sh status
-./manage.sh logs mycelium
 ```
+
+### Refresh `manage.sh` (existing installs)
+
+If `./manage.sh` only shows `{start|stop|restart|status|logs|urls|update}`, update it:
+
+```bash
+cd /mnt/user/appdata/mycelium-media-stack
+curl -fsSL https://raw.githubusercontent.com/killamfkr/Cellar-loader/main/mycelium-media-stack/unraid/manage.sh -o manage.sh
+chmod +x manage.sh
+```
+
+Or:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/killamfkr/Cellar-loader/main/mycelium-media-stack/unraid/setup.sh | bash -s -- --refresh-scripts
+```
+
+Then run `./manage.sh sync-plex`.
 
 1. Open **Mycelium** — finish the wizard at `http://192.168.0.100:8088`
 2. Open **Plex** — `http://192.168.0.100:32400/web`, add libraries at `/plex-media/movies` and `/plex-media/tv`
