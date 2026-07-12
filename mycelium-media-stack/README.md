@@ -36,7 +36,14 @@ bash mycelium-media-stack/zimaos/prepare.sh   # optional folder setup
 
 ## Unraid
 
-Same layout under [`unraid/`](unraid/) — see [`unraid/INSTALL.md`](unraid/INSTALL.md).
+**One-script setup** (preconfigured for `192.168.0.100`):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/killamfkr/Cellar-loader/main/mycelium-media-stack/unraid/setup.sh | \
+  TORBOX_API_KEY="your-key" TMDB_API_KEY="your-token" bash
+```
+
+See [`unraid/INSTALL.md`](unraid/INSTALL.md).
 
 ## Plex Spore image
 

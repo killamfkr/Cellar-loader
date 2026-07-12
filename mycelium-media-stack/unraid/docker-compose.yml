@@ -1,0 +1,126 @@
+name: mycelium-media-stack
+
+services:
+  mycelium:
+    image: ghcr.io/corveck79/mycelium:latest
+    container_name: mycelium
+    restart: unless-stopped
+    ports:
+      - "8088:8088"
+    environment:
+      PUID: ${PUID:-99}
+      PGID: ${PGID:-100}
+      TZ: ${TZ:-UTC}
+      LISTEN_HOST: 0.0.0.0
+      LISTEN_PORT: 8088
+      DB_PATH: /data/requests.db
+      MEDIA_PATH: /data/media
+      TORBOX_API_KEY: ${TORBOX_API_KEY}
+      TORBOX_BASE_URL: https://api.torbox.app/v1/api
+      TMDB_API_KEY: ${TMDB_API_KEY}
+      CATBOX_MODE: "true"
+      CATBOX_HOST: http://192.168.0.100:8088
+      CATBOX_IDLE_MINUTES: "43200"
+      SPORE_ENABLED: "true"
+      SPORE_MEDIA_PATH: /data/plex-media
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET}
+      SEERR_URL: http://192.168.0.100:5055
+      SEERR_API_KEY: ${SEERR_API_KEY:-}
+      QUALITY_PREFERENCE: 1080p,2160p,720p
+      ALLOW_4K: "true"
+      EXCLUDE_REMUX: "true"
+      EXCLUDE_CAM: "true"
+      PREFER_WEBDL: "true"
+      PREFER_HEVC: "true"
+      MIN_SEEDERS: "3"
+      AUTO_UPGRADE_ENABLED: "true"
+      LOG_LEVEL: INFO
+    volumes:
+      - /mnt/user/appdata/mycelium-media-stack/mycelium:/data
+      - /mnt/user/appdata/mycelium-media-stack/plex-media:/data/plex-media
+
+  plex:
+    image: ghcr.io/killamfkr/plex-spore:latest
+    container_name: plex
+    restart: unless-stopped
+    depends_on:
+      - mycelium
+    ports:
+      - "32400:32400"
+    environment:
+      PUID: ${PUID:-99}
+      PGID: ${PGID:-100}
+      TZ: ${TZ:-UTC}
+      VERSION: docker
+      PLEX_CLAIM: ${PLEX_CLAIM:-}
+      MYCELIUM_URL: http://mycelium:8088
+    volumes:
+      - /mnt/user/appdata/mycelium-media-stack/plex:/config
+      - /mnt/user/appdata/mycelium-media-stack/plex-media:/plex-media
+
+  byparr:
+    image: ghcr.io/thephaseless/byparr:latest
+    container_name: byparr
+    restart: unless-stopped
+    ports:
+      - "8191:8191"
+    environment:
+      LOG_LEVEL: info
+      LOG_HTML: "false"
+      TZ: ${TZ:-UTC}
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    restart: unless-stopped
+    depends_on:
+      - byparr
+    ports:
+      - "9696:9696"
+    environment:
+      PUID: ${PUID:-99}
+      PGID: ${PGID:-100}
+      TZ: ${TZ:-UTC}
+    volumes:
+      - /mnt/user/appdata/mycelium-media-stack/prowlarr:/config
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    restart: unless-stopped
+    ports:
+      - "7878:7878"
+    environment:
+      PUID: ${PUID:-99}
+      PGID: ${PGID:-100}
+      TZ: ${TZ:-UTC}
+    volumes:
+      - /mnt/user/appdata/mycelium-media-stack/radarr:/config
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    restart: unless-stopped
+    ports:
+      - "8989:8989"
+    environment:
+      PUID: ${PUID:-99}
+      PGID: ${PGID:-100}
+      TZ: ${TZ:-UTC}
+    volumes:
+      - /mnt/user/appdata/mycelium-media-stack/sonarr:/config
+
+  seerr:
+    image: ghcr.io/seerr-team/seerr:latest
+    container_name: seerr
+    restart: unless-stopped
+    depends_on:
+      - plex
+      - radarr
+      - sonarr
+    ports:
+      - "5055:5055"
+    environment:
+      TZ: ${TZ:-UTC}
+    volumes:
+      - /mnt/user/appdata/mycelium-media-stack/seerr:/app/config

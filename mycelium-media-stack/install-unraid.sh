@@ -1,5 +1,3 @@
 #!/usr/bin/env bash
-set -euo pipefail
-BASE="/mnt/user/appdata/mycelium-media-stack"
-mkdir -p "${BASE}"/{mycelium,plex-media/movies,plex-media/tv,plex,prowlarr,radarr,sonarr,seerr}
-echo "Ready. See unraid/INSTALL.md — edit compose files then docker compose up -d each one."
+# Wrapper — runs the full Unraid one-script setup (default IP 192.168.0.100)
+exec bash "$(dirname "$0")/unraid/setup.sh" "$@"
