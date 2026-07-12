@@ -21,6 +21,7 @@ PUID="${PUID:-99}"
 PGID="${PGID:-100}"
 TZ="${TZ:-UTC}"
 REPO_RAW="https://raw.githubusercontent.com/killamfkr/Cellar-loader/main/mycelium-media-stack"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-.}")" 2>/dev/null && pwd || true)"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -222,6 +223,16 @@ EOF
   chmod 600 "${INSTALL_DIR}/.stack-env"
 }
 
+copy_spore_backfill() {
+  local dest="${INSTALL_DIR}/spore-backfill.py"
+  if [[ -n "${SCRIPT_DIR}" && -f "${SCRIPT_DIR}/spore-backfill.py" ]]; then
+    cp "${SCRIPT_DIR}/spore-backfill.py" "${dest}"
+  else
+    curl -fsSL "${REPO_RAW}/unraid/spore-backfill.py" -o "${dest}"
+  fi
+  chmod +x "${dest}"
+}
+
 write_manage() {
   cat >"${INSTALL_DIR}/manage.sh" <<'MANAGE'
 #!/usr/bin/env bash
@@ -356,48 +367,16 @@ EOF
     echo "Mycelium library != Plex library. Run ./manage.sh spore-backfill then ./manage.sh plex-scan"
     ;;
   spore-backfill)
-    echo "Generating Spore .mkv stubs in plex-media from Mycelium library ..."
-    docker compose exec -T mycelium python3 <<'PY'
-import re
-from pathlib import Path
-
-import config
-import db
-import strm_generator
-
-result = strm_generator.backfill_spore_stubs()
-print("Official backfill:", result)
-
-created = 0
-media = Path(config.MEDIA_PATH)
-for strm in sorted(media.rglob("*.strm")):
-    stub_dir = strm_generator._spore_stub_dir(strm)
-    mkv = stub_dir / (strm.stem + ".mkv")
-    if mkv.exists():
-        continue
-    url = strm.read_text(encoding="utf-8").strip()
-    match = re.search(r"/stream/([^/?#\s]+)", url)
-    if not match:
-        print("skip (no token):", strm)
-        continue
-    token = match.group(1)
-    item = db.get_virtual_item(token)
-    if not item:
-        print("skip (no db item):", strm)
-        continue
-    strm_generator._write_spore_stubs(
-        strm,
-        token,
-        item.get("title") or strm.stem,
-        item.get("quality"),
-        item.get("size_gb"),
-    )
-    print("created stub:", mkv)
-    created += 1
-
-print("Extra stubs created:", created)
-PY
-    echo "Done. Run ./manage.sh plex-scan to refresh Plex."
+    script="$(pwd)/spore-backfill.py"
+    if [[ ! -f "${script}" ]]; then
+      echo "Downloading spore-backfill.py ..."
+      curl -fsSL "https://raw.githubusercontent.com/killamfkr/Cellar-loader/main/mycelium-media-stack/unraid/spore-backfill.py" -o "${script}"
+      chmod +x "${script}"
+    fi
+    echo "Generating Spore .mkv stubs in plex-media ..."
+    docker compose cp "${script}" mycelium:/tmp/spore-backfill.py
+    docker compose exec -T mycelium python3 /tmp/spore-backfill.py || true
+    echo "Run ./manage.sh plex-scan after stubs appear."
     ;;
   *) usage; exit 1 ;;
 esac
@@ -488,6 +467,7 @@ main() {
   create_dirs
   write_compose
   write_manage
+  copy_spore_backfill
   ensure_plex_image
   start_stack
   print_done

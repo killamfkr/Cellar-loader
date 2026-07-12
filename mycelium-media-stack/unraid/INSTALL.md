@@ -132,6 +132,33 @@ In **Mycelium Admin** (`http://192.168.0.100:8088/admin`), confirm the request s
 5. **Wrong Plex library path** — libraries must point to `/plex-media/movies` and `/plex-media/tv` inside Plex.
 6. **Seerr still shows "Processing"** — until Plex has the movie and you **Sync Libraries** in Seerr.
 
+## Spore backfill created 0 stubs
+
+The Mycelium **Library** page lists database requests — not files in `plex-media/`. Zero stubs usually means one of:
+
+| Diagnose output | Fix |
+|-----------------|-----|
+| `SPORE_ENABLED (effective): False` | Mycelium Admin → **Settings** → enable **Spore** → restart Mycelium |
+| `.strm files on disk: 0` | No media files yet. Mycelium Admin → **TorBox library scan**, or re-request the title |
+| `virtual_items in DB: 0` | Request never fully processed — check Mycelium Admin for `failed` / `wanted` status |
+| `movie requests (success): N` but strms = 0 | Processing marked success before `.strm` was written — re-request or run TorBox scan |
+
+Run the diagnostic backfill (prints counts before creating stubs):
+
+```bash
+cd /mnt/user/appdata/mycelium-media-stack
+curl -fsSL https://raw.githubusercontent.com/killamfkr/Cellar-loader/main/mycelium-media-stack/unraid/spore-backfill.py -o spore-backfill.py
+docker compose cp spore-backfill.py mycelium:/tmp/spore-backfill.py
+docker compose exec -T mycelium python3 /tmp/spore-backfill.py
+```
+
+Read the `=== Mycelium Spore diagnose ===` section — it tells you which step failed.
+
+Also confirm in Mycelium Admin → **Settings**:
+
+- **Spore enabled** = on
+- **Spore media path** = `/data/plex-media`
+
 ## Webhook test failed in Seerr
 
 1. **Secret missing or wrong** — most common. Use the full URL with `?secret=` (Seerr cannot rely on headers alone on all versions).
