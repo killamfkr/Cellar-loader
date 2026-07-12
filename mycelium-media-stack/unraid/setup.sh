@@ -180,6 +180,7 @@ services:
       TZ: ${TZ}
     volumes:
       - ${INSTALL_DIR}/radarr:/config
+      - ${INSTALL_DIR}/plex-media/movies:/movies
 
   sonarr:
     image: lscr.io/linuxserver/sonarr:latest
@@ -193,6 +194,7 @@ services:
       TZ: ${TZ}
     volumes:
       - ${INSTALL_DIR}/sonarr:/config
+      - ${INSTALL_DIR}/plex-media/tv:/tv
 
   seerr:
     image: ghcr.io/seerr-team/seerr:latest
@@ -331,6 +333,11 @@ ${CYAN}Plex — claim your server${NC}
 ${CYAN}Plex libraries${NC}
   Movies: /plex-media/movies
   TV:     /plex-media/tv
+
+${CYAN}Radarr / Sonarr (list managers — Mycelium does the grabbing)${NC}
+  Radarr root folder: /movies   (no download client)
+  Sonarr root folder: /tv      (no download client)
+  Mycelium Admin → Integrations → connect Radarr & Sonarr for bulk import
 
 ${CYAN}Seerr connections (use LAN IP)${NC}
   Plex:   http://${HOST_IP}:32400

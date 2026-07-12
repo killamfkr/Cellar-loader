@@ -63,7 +63,22 @@ Open `http://<ZIMAOS-IP>:8088` and complete setup.
 
 ---
 
-## Step 4 — Seerr
+## Step 4 — Radarr & Sonarr
+
+These are **list managers** for Mycelium bulk import — not download clients.
+
+| App | Root folder | Download client |
+|-----|-------------|-----------------|
+| Radarr | `/movies` | None |
+| Sonarr | `/tv` | None |
+
+In each app: **Settings → Media Management → Root Folders → Add**.
+
+Then in **Mycelium Admin → Integrations**, connect Radarr and Sonarr.
+
+---
+
+## Step 5 — Seerr
 
 Use **LAN IPs** (not docker names) when connecting services:
 

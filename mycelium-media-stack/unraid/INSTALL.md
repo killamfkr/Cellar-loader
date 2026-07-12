@@ -40,7 +40,14 @@ cd /mnt/user/appdata/mycelium-media-stack
 
 1. Open **Mycelium** — finish the wizard at `http://192.168.0.100:8088`
 2. Open **Plex** — `http://192.168.0.100:32400/web`, add libraries at `/plex-media/movies` and `/plex-media/tv`
-3. Configure **Seerr** — use `http://192.168.0.100` for all service URLs; webhook secret is in `.stack-env`
+3. Configure **Radarr** — `http://192.168.0.100:7878`
+   - Settings → Media Management → add root folder **`/movies`**
+   - Do **not** add a download client — Mycelium handles grabs
+4. Configure **Sonarr** — `http://192.168.0.100:8989`
+   - Settings → Media Management → add root folder **`/tv`**
+   - Do **not** add a download client
+5. **Mycelium Admin → Integrations** — connect Radarr and Sonarr (bulk import from lists)
+6. Configure **Seerr** — use `http://192.168.0.100` for all service URLs; webhook secret is in `.stack-env`
 
 ## Plex: "You do not have access to this server"
 
@@ -72,6 +79,21 @@ PLEX_CLAIM=your-token-from-plex-tv-claim docker compose up -d plex
 - Use **http://192.168.0.100:32400/web** directly — not app.plex.tv for first claim
 - Claim token only works **once** and only if Preferences.xml has no valid token
 - If still broken: `docker stop plex`, delete the `plex` config folder, re-run `./manage.sh claim-plex` (you will lose Plex settings)
+
+## Radarr/Sonarr: "folder does not exist"
+
+Older installs did not mount media paths into Radarr/Sonarr. Update and recreate:
+
+```bash
+cd /mnt/user/appdata/mycelium-media-stack
+curl -fsSL https://raw.githubusercontent.com/killamfkr/Cellar-loader/main/mycelium-media-stack/unraid/setup.sh -o /tmp/setup.sh
+# Re-run only if you need a fresh compose — or edit docker-compose.yml manually:
+#   radarr: add  - ./plex-media/movies:/movies
+#   sonarr: add  - ./plex-media/tv:/tv
+docker compose up -d radarr sonarr
+```
+
+Then add root folders **`/movies`** (Radarr) and **`/tv`** (Sonarr).
 
 ## Optional env vars
 

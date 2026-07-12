@@ -18,6 +18,9 @@ services:
       - type: bind
         source: /DATA/AppData/mycelium-media-stack/radarr
         target: /config
+      - type: bind
+        source: /DATA/AppData/mycelium-media-stack/plex-media/movies
+        target: /movies
 
 x-casaos:
   app_id: com.cellarloader.radarr

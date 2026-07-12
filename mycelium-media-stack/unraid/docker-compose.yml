@@ -96,6 +96,7 @@ services:
       TZ: ${TZ:-UTC}
     volumes:
       - /mnt/user/appdata/mycelium-media-stack/radarr:/config
+      - /mnt/user/appdata/mycelium-media-stack/plex-media/movies:/movies
 
   sonarr:
     image: lscr.io/linuxserver/sonarr:latest
@@ -109,6 +110,7 @@ services:
       TZ: ${TZ:-UTC}
     volumes:
       - /mnt/user/appdata/mycelium-media-stack/sonarr:/config
+      - /mnt/user/appdata/mycelium-media-stack/plex-media/tv:/tv
 
   seerr:
     image: ghcr.io/seerr-team/seerr:latest

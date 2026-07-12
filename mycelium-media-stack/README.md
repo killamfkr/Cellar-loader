@@ -52,5 +52,6 @@ Built from [`images/plex-spore/`](images/plex-spore/). Published as `ghcr.io/kil
 ## Notes
 
 - Mycelium handles streaming; Radarr/Sonarr are for bulk import, not download clients.
+- Radarr root folder: `/movies`. Sonarr root folder: `/tv`. No download client needed.
 - Each app uses `network_mode: bridge` — use your LAN IP (not container names) for cross-service URLs.
 - Stream only content you have the right to access.

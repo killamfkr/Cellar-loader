@@ -18,6 +18,9 @@ services:
       - type: bind
         source: /DATA/AppData/mycelium-media-stack/sonarr
         target: /config
+      - type: bind
+        source: /DATA/AppData/mycelium-media-stack/plex-media/tv
+        target: /tv
 
 x-casaos:
   app_id: com.cellarloader.sonarr

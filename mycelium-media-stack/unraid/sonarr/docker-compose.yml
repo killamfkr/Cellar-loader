@@ -14,3 +14,4 @@ services:
       TZ: ${TZ:-UTC}
     volumes:
       - /mnt/user/appdata/mycelium-media-stack/sonarr:/config
+      - /mnt/user/appdata/mycelium-media-stack/plex-media/tv:/tv
