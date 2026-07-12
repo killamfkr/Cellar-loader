@@ -18,6 +18,7 @@ services:
       DB_PATH: /data/requests.db
       TORBOX_API_KEY: replace-me
       TMDB_API_KEY: replace-me
+      ZILEAN_ENABLED: "false"
       CATBOX_MODE: "true"
       CATBOX_HOST: http://192.168.1.50:8088
       CATBOX_IDLE_MINUTES: "43200"

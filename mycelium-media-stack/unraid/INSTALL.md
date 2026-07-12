@@ -159,6 +159,24 @@ Also confirm in Mycelium Admin → **Settings**:
 - **Spore enabled** = on
 - **Spore media path** = `/data/plex-media`
 
+## Zilean is down
+
+This stack does **not** run a separate Zilean container. If the dashboard shows **Zilean down**, external Zilean was enabled during setup with a URL that does not exist.
+
+**Torrentio alone is enough.** Fix in Mycelium Admin → **Settings**:
+
+1. **Zilean enabled** = off (or clear **Zilean URL**)
+2. Save, then restart:
+
+```bash
+cd /mnt/user/appdata/mycelium-media-stack
+docker compose restart mycelium
+```
+
+Or add to `docker-compose.yml` under `mycelium`: `ZILEAN_ENABLED: "false"`, then `docker compose up -d mycelium`.
+
+**Optional — built-in Zilean (no extra container):** Settings → **Zilean mode** = `native`, enable Zilean, clear external URL, then Admin → **Zilean** → **Sync** (first sync can take several minutes).
+
 ## Webhook test failed in Seerr
 
 1. **Secret missing or wrong** — most common. Use the full URL with `?secret=` (Seerr cannot rely on headers alone on all versions).

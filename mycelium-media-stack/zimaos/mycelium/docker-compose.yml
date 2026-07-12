@@ -20,6 +20,7 @@ services:
       DB_PATH: /data/requests.db
       TORBOX_API_KEY: $TORBOX_API_KEY
       TMDB_API_KEY: $TMDB_API_KEY
+      ZILEAN_ENABLED: "false"
       CATBOX_MODE: "true"
       CATBOX_HOST: $CATBOX_HOST
       CATBOX_IDLE_MINUTES: "43200"

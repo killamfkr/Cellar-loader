@@ -103,6 +103,7 @@ services:
       TORBOX_API_KEY: ${TORBOX_API_KEY}
       TORBOX_BASE_URL: https://api.torbox.app/v1/api
       TMDB_API_KEY: ${TMDB_API_KEY}
+      ZILEAN_ENABLED: "false"
       CATBOX_MODE: "true"
       CATBOX_HOST: http://${HOST_IP}:8088
       CATBOX_IDLE_MINUTES: "43200"
