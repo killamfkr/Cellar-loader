@@ -252,50 +252,56 @@ PLEX_CLAIM=your-token-from-plex-tv-claim docker compose up -d plex
 - Claim token only works **once** and only if Preferences.xml has no valid token
 - If still broken: `docker stop plex`, delete the `plex` config folder, re-run `./manage.sh claim-plex` (you will lose Plex settings)
 
-## Plex playback failed (Http request failed / plex.direct)
+## Plex playback failed (Http request failed / plex.direct / s1001)
 
-If the error URL contains **`plex.direct:8443`** and **`location=wan`**, your client is trying **remote** Plex access, not your LAN server.
+**s1001 (Network)** during Spore playback usually means Plex’s transcoder could not reach Mycelium’s `spore-stream` URL.
 
-### Fix 1 — play on LAN first (most common)
+### Fix 1 — patch Plex → Mycelium networking (most common on Unraid)
+
+```bash
+cd /mnt/user/appdata/mycelium-media-stack
+curl -fsSL https://raw.githubusercontent.com/killamfkr/Cellar-loader/cursor/fix-spore-plex-sync-e843/mycelium-media-stack/unraid/manage.sh -o manage.sh
+chmod +x manage.sh
+./manage.sh fix-plex-network
+./manage.sh test-playback
+```
+
+This sets `MYCELIUM_URL: http://host.docker.internal:8088` and recreates Plex so the Spore wrapper uses the host gateway.
+
+### Fix 2 — play on LAN first
 
 On a device on the same network as Unraid, open:
 
 **http://192.168.0.100:32400/web**
 
-Do **not** use app.plex.tv for testing at home. Remote URLs often fail if port forwarding or Plex relay is not set up.
+Do **not** use app.plex.tv for testing at home. Errors with **`plex.direct:8443`** and **`location=wan`** are remote-access failures.
 
-### Fix 2 — run diagnostics
+### Fix 3 — TorBox / first-play materialize
+
+First play triggers Mycelium to fetch from TorBox. If the release is not cached, playback fails.
+
+While playing, check:
 
 ```bash
-cd /mnt/user/appdata/mycelium-media-stack
-./manage.sh test-playback
+docker compose logs mycelium --tail=50 | grep -iE 'spore-stream|materialize|failed|error'
 ```
 
-This checks Plex → Mycelium connectivity, `.minfo` sidecars, and `spore-stream`.
+Re-request the title in Seerr if Mycelium shows `wanted` or `failed`.
 
-### Fix 3 — ensure stubs are complete
-
-Spore needs **both** `.mkv` and `.minfo` next to each title:
+### Fix 4 — ensure stubs are complete
 
 ```bash
 ./manage.sh sync-plex
 find plex-media -name '*.minfo' | head
 ```
 
-### Fix 4 — remote play outside home
-
-Plex → **Settings → Remote Access** → must show accessible (green).  
-Forward **TCP 32400** on your router to `192.168.0.100`, or use Plex relay.
-
-### Fix 5 — client transcode settings
-
-Some clients fail Spore direct play. In Plex client playback settings, try **Maximum quality: Original** on LAN first, or force **1080p 8 Mbps** transcode.
+Spore needs **both** `.mkv` and `.minfo` beside each title.
 
 ### Logs while reproducing (on LAN)
 
 ```bash
+./manage.sh test-playback
 docker compose logs -f mycelium plex
-# In another terminal, play from http://192.168.0.100:32400/web
 tail -f plex/spore-wrap-debug.log
 ```
 

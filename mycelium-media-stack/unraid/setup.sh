@@ -141,7 +141,9 @@ services:
       TZ: ${TZ}
       VERSION: docker
       PLEX_CLAIM: \${PLEX_CLAIM:-}
-      MYCELIUM_URL: http://mycelium:8088
+      MYCELIUM_URL: http://host.docker.internal:8088
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ${INSTALL_DIR}/plex:/config
       - ${INSTALL_DIR}/plex-media:/plex-media
