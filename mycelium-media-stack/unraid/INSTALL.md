@@ -252,6 +252,53 @@ PLEX_CLAIM=your-token-from-plex-tv-claim docker compose up -d plex
 - Claim token only works **once** and only if Preferences.xml has no valid token
 - If still broken: `docker stop plex`, delete the `plex` config folder, re-run `./manage.sh claim-plex` (you will lose Plex settings)
 
+## Plex playback failed (Http request failed / plex.direct)
+
+If the error URL contains **`plex.direct:8443`** and **`location=wan`**, your client is trying **remote** Plex access, not your LAN server.
+
+### Fix 1 — play on LAN first (most common)
+
+On a device on the same network as Unraid, open:
+
+**http://192.168.0.100:32400/web**
+
+Do **not** use app.plex.tv for testing at home. Remote URLs often fail if port forwarding or Plex relay is not set up.
+
+### Fix 2 — run diagnostics
+
+```bash
+cd /mnt/user/appdata/mycelium-media-stack
+./manage.sh test-playback
+```
+
+This checks Plex → Mycelium connectivity, `.minfo` sidecars, and `spore-stream`.
+
+### Fix 3 — ensure stubs are complete
+
+Spore needs **both** `.mkv` and `.minfo` next to each title:
+
+```bash
+./manage.sh sync-plex
+find plex-media -name '*.minfo' | head
+```
+
+### Fix 4 — remote play outside home
+
+Plex → **Settings → Remote Access** → must show accessible (green).  
+Forward **TCP 32400** on your router to `192.168.0.100`, or use Plex relay.
+
+### Fix 5 — client transcode settings
+
+Some clients fail Spore direct play. In Plex client playback settings, try **Maximum quality: Original** on LAN first, or force **1080p 8 Mbps** transcode.
+
+### Logs while reproducing (on LAN)
+
+```bash
+docker compose logs -f mycelium plex
+# In another terminal, play from http://192.168.0.100:32400/web
+tail -f plex/spore-wrap-debug.log
+```
+
 ## Radarr/Sonarr: "folder does not exist"
 
 Older installs did not mount media paths into Radarr/Sonarr. Update and recreate:

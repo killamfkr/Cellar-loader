@@ -5,7 +5,7 @@ cd "$(dirname "$0")"
 REPO_RAW="${REPO_RAW:-https://raw.githubusercontent.com/killamfkr/Cellar-loader/main/mycelium-media-stack}"
 COMPOSE=(docker compose)
 usage() {
-  echo "Usage: ./manage.sh {start|stop|restart|status|logs|urls|update|claim-plex|test-webhook|plex-scan|check-media|check-spore|spore-backfill|sync-plex|sync-strm-fallback|fix-perms}"
+  echo "Usage: ./manage.sh {start|stop|restart|status|logs|urls|update|claim-plex|test-webhook|plex-scan|check-media|check-spore|test-playback|spore-backfill|sync-plex|sync-strm-fallback|fix-perms}"
 }
 pref_file() {
   echo "$(pwd)/plex/Library/Application Support/Plex Media Server/Preferences.xml"
@@ -156,6 +156,58 @@ PY
     echo '  SPORE_MEDIA_PATH: /data/plex-media'
     echo "Then: docker compose up -d mycelium"
     echo "Populate Plex: ./manage.sh sync-plex"
+    ;;
+  test-playback)
+    ip="${HOST_IP:-192.168.0.100}"
+    echo "=== Plex Spore playback diagnostics ==="
+    echo ""
+    echo "1) How are you opening Plex?"
+    echo "   LAN (recommended on home network): http://${ip}:32400/web"
+    echo "   Remote (app.plex.tv / plex.direct) needs Remote Access configured."
+    echo "   Your error with location=wan usually means remote URL failed — try LAN first."
+    echo ""
+    echo "2) Plex container -> Mycelium:"
+    if docker compose exec -T plex curl -sf --max-time 5 "http://mycelium:8088/" >/dev/null 2>&1; then
+      echo "   OK — plex can reach http://mycelium:8088"
+    else
+      echo "   FAILED — plex cannot reach mycelium on the Docker network"
+      echo "   Fix: docker compose.yml plex env MYCELIUM_URL: http://mycelium:8088"
+      echo "   Then: docker compose up -d plex"
+    fi
+    echo ""
+    echo "3) Stub files (.mkv + .minfo required for Spore):"
+    mkv_count="$(find "$(pwd)/plex-media" -name '*.mkv' 2>/dev/null | wc -l | tr -d ' ')"
+    minfo_count="$(find "$(pwd)/plex-media" -name '*.minfo' 2>/dev/null | wc -l | tr -d ' ')"
+    echo "   .mkv stubs: ${mkv_count}   .minfo sidecars: ${minfo_count}"
+    if [[ "${mkv_count}" != "0" && "${minfo_count}" == "0" ]]; then
+      echo "   WARNING: .mkv without .minfo — run ./manage.sh sync-plex"
+    fi
+    sample_minfo="$(find "$(pwd)/plex-media" -name '*.minfo' 2>/dev/null | head -1)"
+    if [[ -n "${sample_minfo}" ]]; then
+      token="$(grep '^token=' "${sample_minfo}" | head -1 | cut -d= -f2-)"
+      echo "   Sample token: ${token}"
+      echo "4) spore-stream from inside Plex container:"
+      code="$(docker compose exec -T plex curl -sS -o /dev/null -w '%{http_code}' --max-time 15 \
+        "http://mycelium:8088/spore-stream/${token}" 2>/dev/null || echo "000")"
+      echo "   HTTP ${code} for /spore-stream/${token}"
+      if [[ "${code}" != "200" && "${code}" != "206" ]]; then
+        echo "   Stream failed — check: docker compose logs mycelium --tail=50"
+      fi
+    else
+      echo "4) No .minfo found — run ./manage.sh sync-plex first"
+    fi
+    echo ""
+    echo "5) Spore transcoder wrapper log (last 15 lines):"
+    wrap_log="$(pwd)/plex/spore-wrap-debug.log"
+    if [[ -f "${wrap_log}" ]]; then
+      tail -15 "${wrap_log}" || true
+    else
+      echo "   (no ${wrap_log} yet — try playing once from http://${ip}:32400/web)"
+    fi
+    echo ""
+    echo "6) Plex Remote Access:"
+    echo "   Settings → Remote Access — if red/unavailable, use http://${ip}:32400/web on LAN"
+    echo "   Or forward TCP 32400 to ${ip} for remote play outside home."
     ;;
   spore-backfill)
     script="$(pwd)/spore-backfill.py"
