@@ -11,7 +11,8 @@
 #
 # Optional:
 #   HOST_IP=192.168.0.100  PUID=99  PGID=100  TZ=America/New_York
-#   PLEX_CLAIM=claim-token  WEBHOOK_SECRET=your-secret
+# Or refresh scripts on an existing install (no API keys required):
+#   bash setup.sh --refresh-scripts
 
 set -euo pipefail
 
@@ -140,7 +141,9 @@ services:
       TZ: ${TZ}
       VERSION: docker
       PLEX_CLAIM: \${PLEX_CLAIM:-}
-      MYCELIUM_URL: http://mycelium:8088
+      MYCELIUM_URL: http://host.docker.internal:8088
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ${INSTALL_DIR}/plex:/config
       - ${INSTALL_DIR}/plex-media:/plex-media
@@ -224,166 +227,37 @@ EOF
   chmod 600 "${INSTALL_DIR}/.stack-env"
 }
 
-copy_spore_backfill() {
-  local dest="${INSTALL_DIR}/spore-backfill.py"
-  if [[ -n "${SCRIPT_DIR}" && -f "${SCRIPT_DIR}/spore-backfill.py" ]]; then
-    cp "${SCRIPT_DIR}/spore-backfill.py" "${dest}"
+copy_helper_scripts() {
+  for script in spore-backfill.py catbox-rebuild.py sync-seerr-requests.py; do
+    local dest="${INSTALL_DIR}/${script}"
+    if [[ -n "${SCRIPT_DIR}" && -f "${SCRIPT_DIR}/${script}" ]]; then
+      cp "${SCRIPT_DIR}/${script}" "${dest}"
+    else
+      curl -fsSL "${REPO_RAW}/unraid/${script}" -o "${dest}"
+    fi
+    chmod +x "${dest}"
+  done
+}
+
+write_manage() {
+  local dest="${INSTALL_DIR}/manage.sh"
+  if [[ -n "${SCRIPT_DIR}" && -f "${SCRIPT_DIR}/manage.sh" ]]; then
+    cp "${SCRIPT_DIR}/manage.sh" "${dest}"
+  elif curl -fsSL "${REPO_RAW}/unraid/manage.sh" -o "${dest}"; then
+    :
   else
-    curl -fsSL "${REPO_RAW}/unraid/spore-backfill.py" -o "${dest}"
+    err "Could not download manage.sh"
+    exit 1
   fi
   chmod +x "${dest}"
 }
 
-write_manage() {
-  cat >"${INSTALL_DIR}/manage.sh" <<'MANAGE'
-#!/usr/bin/env bash
-set -euo pipefail
-cd "$(dirname "$0")"
-[[ -f .stack-env ]] && source .stack-env
-COMPOSE=(docker compose)
-usage() {
-  echo "Usage: ./manage.sh {start|stop|restart|status|logs|urls|update|claim-plex|test-webhook|plex-scan|check-media|spore-backfill}"
-}
-pref_file() {
-  echo "$(pwd)/plex/Library/Application Support/Plex Media Server/Preferences.xml"
-}
-cmd="${1:-}"
-case "${cmd}" in
-  start)   docker compose up -d ;;
-  stop)    docker compose stop ;;
-  restart) docker compose restart ;;
-  status)  docker compose ps ;;
-  logs)    docker compose logs -f --tail=100 "${2:-}" ;;
-  update)  docker compose pull && docker compose up -d ;;
-  claim-plex)
-    echo "1. Open https://www.plex.tv/claim/ and copy the token (expires in ~4 minutes)"
-    read -r -p "2. Paste PLEX_CLAIM token: " token
-    [[ -n "${token}" ]] || { echo "No token entered."; exit 1; }
-    docker stop plex 2>/dev/null || true
-    pref="$(pref_file)"
-    if [[ -f "${pref}" ]]; then
-      echo "Clearing old Plex account link from Preferences.xml ..."
-      sed -i \
-        -e 's/ PlexOnlineToken="[^"]*"//g' \
-        -e 's/ PlexOnlineUsername="[^"]*"//g' \
-        -e 's/ PlexOnlineEmail="[^"]*"//g' \
-        -e 's/ PlexOnlineHome="[^"]*"//g' \
-        "${pref}"
-    fi
-    echo "Claiming server and starting Plex ..."
-    PLEX_CLAIM="${token}" docker compose up -d plex
-    echo "Wait ~30s, then open: http://${HOST_IP:-192.168.0.100}:32400/web"
-    echo "Sign in with the SAME Plex account you used for the claim token."
-    ;;
-  urls)
-    ip="${HOST_IP:-192.168.0.100}"
-    secret=""
-    [[ -f .stack-env ]] && secret="$(grep '^WEBHOOK_SECRET=' .stack-env | cut -d= -f2-)"
-    cat <<EOF
-Mycelium: http://${ip}:8088
-Plex:     http://${ip}:32400/web
-Seerr:    http://${ip}:5055
-Radarr:   http://${ip}:7878
-Sonarr:   http://${ip}:8989
-Prowlarr: http://${ip}:9696
-EOF
-    if [[ -n "${secret}" ]]; then
-      echo "Seerr webhook URL:"
-      echo "  http://${ip}:8088/webhook?secret=${secret}"
-    fi
-    [[ -f .stack-env ]] && echo "Webhook secret: ${secret:-$(grep WEBHOOK_SECRET .stack-env | cut -d= -f2-)}"
-    ;;
-  test-webhook)
-    ip="${HOST_IP:-192.168.0.100}"
-    secret=""
-    [[ -f .stack-env ]] && secret="$(grep '^WEBHOOK_SECRET=' .stack-env | cut -d= -f2-)"
-    if [[ -z "${secret}" ]]; then
-      echo "No WEBHOOK_SECRET in .stack-env — copy it from Mycelium Admin → Settings → Integration Endpoints"
-      exit 1
-    fi
-    echo "POST http://${ip}:8088/webhook?secret=..."
-    resp="$(curl -sS -w '\n%{http_code}' -X POST \
-      "http://${ip}:8088/webhook?secret=${secret}" \
-      -H 'Content-Type: application/json' \
-      -d '{"notification_type":"TEST_NOTIFICATION"}')"
-    body="${resp%$'\n'*}"
-    code="${resp##*$'\n'}"
-    echo "HTTP ${code}"
-    echo "${body}"
-    if [[ "${code}" == "200" || "${code}" == "202" ]]; then
-      echo "OK — use this URL in Seerr: http://${ip}:8088/webhook?secret=${secret}"
-    else
-      echo "Failed — compare secret with Mycelium Admin → Settings → Integration Endpoints"
-      exit 1
-    fi
-    ;;
-  plex-scan)
-    ip="${HOST_IP:-192.168.0.100}"
-    pref="$(pref_file)"
-    token=""
-    if [[ -f "${pref}" ]]; then
-      token="$(grep -oP 'PlexOnlineToken="\K[^"]+' "${pref}" 2>/dev/null || true)"
-    fi
-    if [[ -z "${token}" ]]; then
-      echo "No Plex token found — claim Plex first: ./manage.sh claim-plex"
-      exit 1
-    fi
-    echo "Refreshing Plex libraries on http://${ip}:32400 ..."
-    sections="$(curl -sS "http://${ip}:32400/library/sections?X-Plex-Token=${token}")"
-    while IFS= read -r id; do
-      [[ -z "${id}" ]] && continue
-      title="$(echo "${sections}" | grep -oP "(?<=<Directory )[^>]*key=\"${id}\"[^>]*title=\"\K[^\"]+" | head -1)"
-      curl -sS -X GET "http://${ip}:32400/library/sections/${id}/refresh?X-Plex-Token=${token}" >/dev/null
-      echo "  scanned: ${title:-section ${id}}"
-    done < <(echo "${sections}" | grep -oP '(?<=<Directory )[^>]*key="\K[0-9]+')
-    echo "Done — wait ~30s, then check Plex and run Sync Libraries in Seerr."
-    ;;
-  check-media)
-    ip="${HOST_IP:-192.168.0.100}"
-    media_dir="$(pwd)/plex-media/movies"
-    strm_dir="$(pwd)/mycelium/media/movies"
-    echo "=== Spore stubs (what Plex scans) ==="
-    echo "Path: ${media_dir}"
-    if [[ -d "${media_dir}" ]]; then
-      find "${media_dir}" -name '*.mkv' 2>/dev/null | head -20 || echo "(no .mkv stubs yet — run ./manage.sh spore-backfill)"
-      count="$(find "${media_dir}" -name '*.mkv' 2>/dev/null | wc -l | tr -d ' ')"
-      echo "Total movie stubs: ${count}"
-    else
-      echo "Missing ${media_dir}"
-    fi
-    echo ""
-    echo "=== Mycelium .strm library (internal, not Plex) ==="
-    echo "Path: ${strm_dir}"
-    if [[ -d "${strm_dir}" ]]; then
-      find "${strm_dir}" -name '*.strm' 2>/dev/null | head -10 || echo "(no .strm files)"
-      strm_count="$(find "${strm_dir}" -name '*.strm' 2>/dev/null | wc -l | tr -d ' ')"
-      echo "Total movie .strm files: ${strm_count}"
-    else
-      echo "Missing ${strm_dir}"
-    fi
-    echo ""
-    echo "=== Recent Mycelium activity ==="
-    docker compose logs mycelium --tail=80 2>/dev/null | grep -iE 'webhook|Added|Failed|wanted|process|Seerr|Spore|error' || true
-    echo ""
-    echo "Mycelium library != Plex library. Run ./manage.sh spore-backfill then ./manage.sh plex-scan"
-    ;;
-  spore-backfill)
-    script="$(pwd)/spore-backfill.py"
-    if [[ ! -f "${script}" ]]; then
-      echo "Downloading spore-backfill.py ..."
-      curl -fsSL "${REPO_RAW}/unraid/spore-backfill.py" -o "${script}" || \
-        curl -fsSL "https://raw.githubusercontent.com/killamfkr/Cellar-loader/1d32249/mycelium-media-stack/unraid/spore-backfill.py" -o "${script}"
-      chmod +x "${script}"
-    fi
-    echo "Generating Spore .mkv stubs in plex-media ..."
-    docker compose cp "${script}" mycelium:/app/spore-backfill.py
-    docker compose exec -T -w /app mycelium python3 /app/spore-backfill.py || true
-    echo "Run ./manage.sh plex-scan after stubs appear."
-    ;;
-  *) usage; exit 1 ;;
-esac
-MANAGE
-  chmod +x "${INSTALL_DIR}/manage.sh"
+refresh_scripts() {
+  log "Refreshing manage.sh and spore-backfill.py in ${INSTALL_DIR} ..."
+  mkdir -p "${INSTALL_DIR}"
+  write_manage
+  copy_helper_scripts
+  log "Done. Run: cd ${INSTALL_DIR} && ./manage.sh sync-plex"
 }
 
 ensure_plex_image() {
@@ -449,10 +323,13 @@ ${CYAN}Radarr / Sonarr (list managers — Mycelium does the grabbing)${NC}
 
 ${CYAN}After a Seerr request${NC}
   1. Mycelium Admin → confirm request added (not failed)
-  2. ./manage.sh check-media   (strm in mycelium/media, stubs in plex-media)
-  3. ./manage.sh spore-backfill (if plex-media is empty)
-  4. ./manage.sh plex-scan
-  5. Seerr → Settings → Plex → Sync Libraries
+  2. ./manage.sh check-media
+  3. ./manage.sh sync-plex
+  4. Seerr → Settings → Plex → Sync Libraries
+
+${CYAN}Update manage.sh on an existing install${NC}
+  curl -fsSL .../setup.sh | bash -s -- --refresh-scripts
+  Or: curl -fsSL .../manage.sh -o manage.sh && chmod +x manage.sh
 
 ${CYAN}Seerr connections (use LAN IP)${NC}
   Plex:   http://${HOST_IP}:32400
@@ -463,13 +340,17 @@ EOF
 }
 
 main() {
+  if [[ "${1:-}" == "--refresh-scripts" ]]; then
+    refresh_scripts
+    exit 0
+  fi
   echo -e "${CYAN}Mycelium media stack — Unraid setup (${HOST_IP})${NC}"
   require_docker
   check_keys
   create_dirs
   write_compose
   write_manage
-  copy_spore_backfill
+  copy_helper_scripts
   ensure_plex_image
   start_stack
   print_done

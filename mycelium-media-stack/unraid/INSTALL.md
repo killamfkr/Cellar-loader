@@ -35,8 +35,25 @@ TORBOX_API_KEY="your-key" TMDB_API_KEY="your-token" bash Cellar-loader/mycelium-
 cd /mnt/user/appdata/mycelium-media-stack
 ./manage.sh urls
 ./manage.sh status
-./manage.sh logs mycelium
 ```
+
+### Refresh `manage.sh` (existing installs)
+
+If `./manage.sh` only shows `{start|stop|restart|status|logs|urls|update}`, update it:
+
+```bash
+cd /mnt/user/appdata/mycelium-media-stack
+curl -fsSL https://raw.githubusercontent.com/killamfkr/Cellar-loader/main/mycelium-media-stack/unraid/manage.sh -o manage.sh
+chmod +x manage.sh
+```
+
+Or:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/killamfkr/Cellar-loader/main/mycelium-media-stack/unraid/setup.sh | bash -s -- --refresh-scripts
+```
+
+Then run `./manage.sh sync-plex`.
 
 1. Open **Mycelium** — finish the wizard at `http://192.168.0.100:8088`
 2. Open **Plex** — `http://192.168.0.100:32400/web`, add libraries at `/plex-media/movies` and `/plex-media/tv`
@@ -79,9 +96,25 @@ A successful test returns HTTP 200 with `"status":"ignored"` (Mycelium ignores t
 Also in **Mycelium Admin → Settings**, set:
 
 - `SEERR_URL` = `http://192.168.0.100:5055`
-- `SEERR_API_KEY` = from Seerr → Settings → General → API Key
+- `SEERR_API_KEY` = from Seerr → Settings → General → API Key (**required** — webhooks alone are not enough if the payload lacks an IMDB id)
 
-Restart Mycelium after changing those.
+Restart Mycelium after changing those:
+
+```bash
+docker compose restart mycelium
+```
+
+Verify Seerr connection:
+
+```bash
+./manage.sh test-seerr
+```
+
+If a request is approved in Seerr but missing from Mycelium Library:
+
+```bash
+./manage.sh sync-seerr
+```
 
 ### After requesting in Seerr
 
@@ -105,20 +138,37 @@ If a title shows in Mycelium but `plex-media/movies/` is empty, generate the stu
 
 ```bash
 cd /mnt/user/appdata/mycelium-media-stack
-./manage.sh spore-backfill
-./manage.sh plex-scan
+./manage.sh sync-plex
 ```
 
-Or in Mycelium Admin → **Classic → Maintenance → Spore backfill** (if available).
+`sync-plex` runs spore-backfill, fixes permissions, mirrors `.strm` files as a fallback if stub creation fails, then triggers a Plex scan.
+
+**Note:** Mycelium has **no “Spore enabled” toggle in Admin → Settings**. Spore is controlled by `docker-compose.yml` env vars. Run `./manage.sh check-spore` to verify.
 
 ```bash
 cd /mnt/user/appdata/mycelium-media-stack
 ./manage.sh check-media    # compare strm vs stub counts
-./manage.sh spore-backfill # create missing Plex stubs
-./manage.sh plex-scan      # force Plex library scan
+./manage.sh check-spore    # verify SPORE_ENABLED in compose + container
+./manage.sh sync-plex      # backfill stubs + plex scan (preferred)
 ```
 
 In **Mycelium Admin** (`http://192.168.0.100:8088/admin`), confirm the request shows as added (not failed/wanted).
+
+## Request in Seerr but not in Mycelium Library
+
+1. **`SEERR_API_KEY` missing** (most common) — Mycelium needs this to look up request details from Seerr.
+   - Seerr → Settings → General → copy **API Key**
+   - Mycelium Admin → Settings → paste `SEERR_API_KEY`, set `SEERR_URL` = `http://192.168.0.100:5055`
+   - `docker compose restart mycelium`
+   - Run `./manage.sh test-seerr` — must show `SEERR_API_KEY: set` and list approved requests
+2. **Webhook not firing** — Seerr → Notifications → Webhook → enable **Request Approved** and **Request Auto-Approved**
+3. **Webhook secret wrong** — `./manage.sh test-webhook` must return HTTP 200
+4. **Request still pending in Seerr** — must be **Approved** (not only submitted)
+5. **Manual catch-up** — after fixing API key:
+   ```bash
+   ./manage.sh sync-seerr
+   ```
+6. **Processor failed** — Mycelium Admin → Library shows `failed` or `wanted` (no TorBox cached release). Check `docker compose logs mycelium --tail=50`
 
 ## Request in Seerr but movie not in Plex
 
@@ -138,10 +188,17 @@ The Mycelium **Library** page lists database requests — not files in `plex-med
 
 | Diagnose output | Fix |
 |-----------------|-----|
-| `SPORE_ENABLED (effective): False` | Mycelium Admin → **Settings** → enable **Spore** → restart Mycelium |
+| `config.SPORE_ENABLED = False` | Add `SPORE_ENABLED: "true"` to `docker-compose.yml` → `docker compose up -d mycelium`. There is **no Spore toggle in Mycelium Settings UI**. |
 | `.strm files on disk: 0` | No media files yet. Mycelium Admin → **TorBox library scan**, or re-request the title |
-| `virtual_items in DB: 0` | Request never fully processed — check Mycelium Admin for `failed` / `wanted` status |
-| `movie requests (success): N` but strms = 0 | Processing marked success before `.strm` was written — re-request or run TorBox scan |
+| `virtual_items in DB: 0` with many `.strm` files | Legacy CDN URLs — run `./manage.sh rebuild-catbox` then `./manage.sh sync-plex` |
+| `plex-media writable: False` | Run `./manage.sh fix-perms` or `./manage.sh sync-plex` (retries as root) |
+
+Verify Spore env:
+
+```bash
+cd /mnt/user/appdata/mycelium-media-stack
+./manage.sh check-spore
+```
 
 Run the diagnostic backfill (prints counts before creating stubs):
 
@@ -154,10 +211,24 @@ docker compose exec -T -w /app mycelium python3 /app/spore-backfill.py
 
 Read the `=== Mycelium Spore diagnose ===` section — it tells you which step failed.
 
-Also confirm in Mycelium Admin → **Settings**:
+Required in `docker-compose.yml` under the `mycelium` service (not in the Settings UI):
 
-- **Spore enabled** = on
-- **Spore media path** = `/data/plex-media`
+```yaml
+SPORE_ENABLED: "true"
+SPORE_MEDIA_PATH: /data/plex-media
+CATBOX_MODE: "true"
+CATBOX_LAZY_ADD: "true"
+```
+
+### Legacy library (751+ CDN .strm, virtual_items empty)
+
+If diagnose shows many `.strm` files but `virtual_items in DB: 0`, the library was built before Catbox mode. Rebuild tokens, then stubs:
+
+```bash
+cd /mnt/user/appdata/mycelium-media-stack
+./manage.sh rebuild-catbox
+./manage.sh sync-plex
+```
 
 ## Zilean is down
 
@@ -222,6 +293,59 @@ PLEX_CLAIM=your-token-from-plex-tv-claim docker compose up -d plex
 - Use **http://192.168.0.100:32400/web** directly — not app.plex.tv for first claim
 - Claim token only works **once** and only if Preferences.xml has no valid token
 - If still broken: `docker stop plex`, delete the `plex` config folder, re-run `./manage.sh claim-plex` (you will lose Plex settings)
+
+## Plex playback failed (Http request failed / plex.direct / s1001)
+
+**s1001 (Network)** during Spore playback usually means Plex’s transcoder could not reach Mycelium’s `spore-stream` URL.
+
+### Fix 1 — patch Plex → Mycelium networking (most common on Unraid)
+
+```bash
+cd /mnt/user/appdata/mycelium-media-stack
+curl -fsSL https://raw.githubusercontent.com/killamfkr/Cellar-loader/cursor/fix-spore-plex-sync-e843/mycelium-media-stack/unraid/manage.sh -o manage.sh
+chmod +x manage.sh
+./manage.sh fix-plex-network
+./manage.sh test-playback
+```
+
+This sets `MYCELIUM_URL: http://host.docker.internal:8088` and recreates Plex so the Spore wrapper uses the host gateway.
+
+### Fix 2 — play on LAN first
+
+On a device on the same network as Unraid, open:
+
+**http://192.168.0.100:32400/web**
+
+Do **not** use app.plex.tv for testing at home. Errors with **`plex.direct:8443`** and **`location=wan`** are remote-access failures.
+
+### Fix 3 — TorBox / first-play materialize
+
+First play triggers Mycelium to fetch from TorBox. If the release is not cached, playback fails.
+
+While playing, check:
+
+```bash
+docker compose logs mycelium --tail=50 | grep -iE 'spore-stream|materialize|failed|error'
+```
+
+Re-request the title in Seerr if Mycelium shows `wanted` or `failed`.
+
+### Fix 4 — ensure stubs are complete
+
+```bash
+./manage.sh sync-plex
+find plex-media -name '*.minfo' | head
+```
+
+Spore needs **both** `.mkv` and `.minfo` beside each title.
+
+### Logs while reproducing (on LAN)
+
+```bash
+./manage.sh test-playback
+docker compose logs -f mycelium plex
+tail -f plex/spore-wrap-debug.log
+```
 
 ## Radarr/Sonarr: "folder does not exist"
 

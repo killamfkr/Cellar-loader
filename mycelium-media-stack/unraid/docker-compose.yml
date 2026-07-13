@@ -55,7 +55,9 @@ services:
       TZ: ${TZ:-UTC}
       VERSION: docker
       PLEX_CLAIM: ${PLEX_CLAIM:-}
-      MYCELIUM_URL: http://mycelium:8088
+      MYCELIUM_URL: http://host.docker.internal:8088
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - /mnt/user/appdata/mycelium-media-stack/plex:/config
       - /mnt/user/appdata/mycelium-media-stack/plex-media:/plex-media
