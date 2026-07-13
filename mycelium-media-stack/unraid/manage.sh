@@ -5,7 +5,7 @@ cd "$(dirname "$0")"
 REPO_RAW="${REPO_RAW:-https://raw.githubusercontent.com/killamfkr/Cellar-loader/main/mycelium-media-stack}"
 COMPOSE=(docker compose)
 usage() {
-  echo "Usage: ./manage.sh {start|stop|restart|status|logs|urls|update|claim-plex|test-webhook|plex-scan|check-media|check-spore|test-playback|fix-plex-network|rebuild-catbox|spore-backfill|sync-plex|sync-strm-fallback|fix-perms}"
+  echo "Usage: ./manage.sh {start|stop|restart|status|logs|urls|update|claim-plex|test-webhook|test-seerr|sync-seerr|plex-scan|check-media|check-spore|test-playback|fix-plex-network|rebuild-catbox|spore-backfill|sync-plex|sync-strm-fallback|fix-perms}"
 }
 pref_file() {
   echo "$(pwd)/plex/Library/Application Support/Plex Media Server/Preferences.xml"
@@ -79,6 +79,48 @@ EOF
       echo "Failed — compare secret with Mycelium Admin → Settings → Integration Endpoints"
       exit 1
     fi
+    ;;
+  test-seerr)
+    script="$(pwd)/sync-seerr-requests.py"
+    if [[ ! -f "${script}" ]]; then
+      curl -fsSL "${REPO_RAW}/unraid/sync-seerr-requests.py" -o "${script}"
+    fi
+    docker compose cp "${script}" mycelium:/app/sync-seerr-requests.py
+    docker compose exec -T -w /app mycelium python3 - <<'PY'
+import seerr, db
+print("=== Seerr connection ===")
+print("SEERR_URL:", seerr._seerr_url() or "MISSING")
+key = seerr._seerr_api_key()
+print("SEERR_API_KEY:", f"set ({len(key)} chars)" if key else "MISSING — Mycelium cannot read Seerr requests")
+if seerr._seerr_url() and key:
+    try:
+        items = seerr.list_approved_requests(take=5)
+        print(f"Approved requests in Seerr: {len(items)} (showing up to 5)")
+        for item in items:
+            m = item.get("media") or {}
+            print(f"  - {m.get('title')} ({m.get('mediaType')}) id={item.get('id')}")
+    except Exception as e:
+        print("Seerr API error:", e)
+print()
+print("=== Mycelium library (requests DB) ===")
+for row in db.get_recent(10):
+    print(f"  - {row.get('title')!r} status={row.get('status')} imdb={row.get('imdb_id')}")
+PY
+    echo ""
+    echo "Webhook URL for Seerr:"
+    secret=""
+    [[ -f .stack-env ]] && secret="$(grep '^WEBHOOK_SECRET=' .stack-env | cut -d= -f2-)"
+    echo "  http://${HOST_IP:-192.168.0.100}:8088/webhook?secret=${secret:-YOUR_SECRET}"
+    echo "Triggers: Request Approved + Request Auto-Approved"
+    echo "If Seerr has requests but Mycelium does not: ./manage.sh sync-seerr"
+    ;;
+  sync-seerr)
+    script="$(pwd)/sync-seerr-requests.py"
+    if [[ ! -f "${script}" ]]; then
+      curl -fsSL "${REPO_RAW}/unraid/sync-seerr-requests.py" -o "${script}"
+    fi
+    docker compose cp "${script}" mycelium:/app/sync-seerr-requests.py
+    docker compose exec -T -w /app mycelium python3 /app/sync-seerr-requests.py
     ;;
   plex-scan)
     ip="${HOST_IP:-192.168.0.100}"

@@ -228,7 +228,7 @@ EOF
 }
 
 copy_helper_scripts() {
-  for script in spore-backfill.py catbox-rebuild.py; do
+  for script in spore-backfill.py catbox-rebuild.py sync-seerr-requests.py; do
     local dest="${INSTALL_DIR}/${script}"
     if [[ -n "${SCRIPT_DIR}" && -f "${SCRIPT_DIR}/${script}" ]]; then
       cp "${SCRIPT_DIR}/${script}" "${dest}"

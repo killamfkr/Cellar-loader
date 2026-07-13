@@ -96,9 +96,25 @@ A successful test returns HTTP 200 with `"status":"ignored"` (Mycelium ignores t
 Also in **Mycelium Admin → Settings**, set:
 
 - `SEERR_URL` = `http://192.168.0.100:5055`
-- `SEERR_API_KEY` = from Seerr → Settings → General → API Key
+- `SEERR_API_KEY` = from Seerr → Settings → General → API Key (**required** — webhooks alone are not enough if the payload lacks an IMDB id)
 
-Restart Mycelium after changing those.
+Restart Mycelium after changing those:
+
+```bash
+docker compose restart mycelium
+```
+
+Verify Seerr connection:
+
+```bash
+./manage.sh test-seerr
+```
+
+If a request is approved in Seerr but missing from Mycelium Library:
+
+```bash
+./manage.sh sync-seerr
+```
 
 ### After requesting in Seerr
 
@@ -137,6 +153,22 @@ cd /mnt/user/appdata/mycelium-media-stack
 ```
 
 In **Mycelium Admin** (`http://192.168.0.100:8088/admin`), confirm the request shows as added (not failed/wanted).
+
+## Request in Seerr but not in Mycelium Library
+
+1. **`SEERR_API_KEY` missing** (most common) — Mycelium needs this to look up request details from Seerr.
+   - Seerr → Settings → General → copy **API Key**
+   - Mycelium Admin → Settings → paste `SEERR_API_KEY`, set `SEERR_URL` = `http://192.168.0.100:5055`
+   - `docker compose restart mycelium`
+   - Run `./manage.sh test-seerr` — must show `SEERR_API_KEY: set` and list approved requests
+2. **Webhook not firing** — Seerr → Notifications → Webhook → enable **Request Approved** and **Request Auto-Approved**
+3. **Webhook secret wrong** — `./manage.sh test-webhook` must return HTTP 200
+4. **Request still pending in Seerr** — must be **Approved** (not only submitted)
+5. **Manual catch-up** — after fixing API key:
+   ```bash
+   ./manage.sh sync-seerr
+   ```
+6. **Processor failed** — Mycelium Admin → Library shows `failed` or `wanted` (no TorBox cached release). Check `docker compose logs mycelium --tail=50`
 
 ## Request in Seerr but movie not in Plex
 
