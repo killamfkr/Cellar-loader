@@ -1,36 +1,34 @@
 # Publishing as its own GitHub repository
 
-This project lives in **Cellar-loader** during development; the canonical home is **[killamfkr/ollama-cursor-agent](https://github.com/killamfkr/ollama-cursor-agent)**.
+Canonical home: **[killamfkr/ollama-cursor-agent](https://github.com/killamfkr/ollama-cursor-agent)**.
 
-## One-time: create the repo and push
+The full project **already lives on this git branch** (`ollama-cursor-agent`) at the repository root — not under a subfolder.
 
-1. Create an empty repository on GitHub: **killamfkr/ollama-cursor-agent** (public).
-
-2. From a machine with git, either use the **orphan branch** this project publishes:
+## Fastest: push from your PC (empty repo must exist)
 
 ```bash
 git clone --branch ollama-cursor-agent --single-branch \
-  https://github.com/killamfkr/Cellar-loader.git /tmp/oc-import
-cd /tmp/oc-import
-git remote remove origin
-git remote add origin https://github.com/killamfkr/ollama-cursor-agent.git
+  https://github.com/killamfkr/Cellar-loader.git ollama-cursor-agent
+cd ollama-cursor-agent
+git remote set-url origin https://github.com/killamfkr/ollama-cursor-agent.git
 git push -u origin HEAD:main
 ```
 
-Or export from this folder:
+GitHub may ask you to sign in (HTTPS) or use SSH:
 
 ```bash
-git clone https://github.com/killamfkr/Cellar-loader.git
-cd Cellar-loader/ollama-agent
-# ensure you are on a branch that includes this directory, then:
-git subtree split --prefix=ollama-agent -b ollama-cursor-agent-export
-git push https://github.com/killamfkr/ollama-cursor-agent.git ollama-cursor-agent-export:main
+git remote set-url origin git@github.com:killamfkr/ollama-cursor-agent.git
+git push -u origin HEAD:main
 ```
 
-3. Enable **Actions** on the new repo so `build-image.yml` publishes `ghcr.io/killamfkr/ollama-cursor-agent:latest`.
+## Or: GitHub Action on Cellar-loader
 
-4. Make the GHCR package public (or allow anonymous pull) for Unraid template installs.
+1. Cellar-loader → **Settings → Secrets → Actions** → new secret `OLLAMA_CURSOR_AGENT_PUSH_TOKEN` (PAT with `repo` scope).
+2. Merge `.github/workflows/publish-ollama-cursor-agent.yml` into **Cellar-loader `main`**.
+3. **Actions → Publish ollama-cursor-agent repo → Run workflow**.
 
-## After the split
+## After push
 
-Remove `ollama-agent/` from Cellar-loader and link to the new repository from the root README.
+1. On **ollama-cursor-agent**, set default branch to **main**.
+2. Enable **Actions** (`build-image.yml` → `ghcr.io/killamfkr/ollama-cursor-agent:latest`).
+3. Make the GHCR package **public** for Unraid pulls.
