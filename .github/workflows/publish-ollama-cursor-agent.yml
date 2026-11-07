@@ -1,0 +1,36 @@
+name: Publish ollama-cursor-agent repo
+
+# Pushes branch `ollama-cursor-agent` to https://github.com/killamfkr/ollama-cursor-agent (main).
+#
+# Setup (once):
+# 1. Create a classic PAT with `repo` scope (or fine-grained access to ollama-cursor-agent).
+# 2. Cellar-loader → Settings → Secrets → Actions → New repository secret:
+#    Name: OLLAMA_CURSOR_AGENT_PUSH_TOKEN
+# 3. Run this workflow from the Actions tab.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ollama-cursor-agent
+          fetch-depth: 0
+
+      - name: Push to killamfkr/ollama-cursor-agent
+        env:
+          PUSH_TOKEN: ${{ secrets.OLLAMA_CURSOR_AGENT_PUSH_TOKEN }}
+        run: |
+          if [[ -z "${PUSH_TOKEN}" ]]; then
+            echo "Missing secret OLLAMA_CURSOR_AGENT_PUSH_TOKEN on this repository."
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git push "https://x-access-token:${PUSH_TOKEN}@github.com/killamfkr/ollama-cursor-agent.git" HEAD:main --force
