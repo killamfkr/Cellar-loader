@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>ollama-cursor-agent-stack</Name>
+  <Repository>ghcr.io/killamfkr/ollama-cursor-agent:latest</Repository>
+  <Registry>https://github.com/killamfkr/ollama-cursor-agent</Registry>
+  <Network>bridge</Network>
+  <Shell>bash</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/killamfkr/ollama-cursor-agent/issues</Support>
+  <Project>https://github.com/killamfkr/ollama-cursor-agent/tree/main/unraid</Project>
+  <Overview>Full stack (Ollama + Cursor-style agent) via Docker Compose.[br][br]Unraid 8+: install with Compose installer fields below.[br]Unraid 6.x: run the one-script setup from INSTALL.md instead.[br][br]Includes GPU comments in compose for NVIDIA plugin users.</Overview>
+  <Category>AI:Productivity</Category>
+  <WebUI>http://[IP]:[PORT:8080]/</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/killamfkr/ollama-cursor-agent/main/unraid/templates/ollama-cursor-agent-stack.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/killamfkr/ollama-cursor-agent/main/unraid/icon.svg</Icon>
+  <InstallerType>compose</InstallerType>
+  <ComposePath>unraid</ComposePath>
+  <GitHub>killamfkr/ollama-cursor-agent</GitHub>
+  <ReadMe>https://raw.githubusercontent.com/killamfkr/ollama-cursor-agent/main/unraid/INSTALL.md</ReadMe>
+</Container>

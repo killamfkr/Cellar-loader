@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>ollama</Name>
+  <Repository>ollama/ollama:latest</Repository>
+  <Registry>https://hub.docker.com/r/ollama/ollama</Registry>
+  <Network>ollama-agent</Network>
+  <MyIP/>
+  <Shell>bash</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/killamfkr/ollama-cursor-agent/issues</Support>
+  <Project>https://github.com/killamfkr/ollama-cursor-agent</Project>
+  <Overview>Ollama LLM runtime for the Ollama Cursor Agent stack.[br][br]Use with container name [b]ollama[/b] on custom network [b]ollama-agent[/b] (created by the stack setup script or Compose Manager).[br][br]After install: [code]docker exec -it ollama ollama pull qwen2.5-coder:7b[/code]</Overview>
+  <Category>AI:</Category>
+  <WebUI/>
+  <TemplateURL>https://raw.githubusercontent.com/killamfkr/ollama-cursor-agent/main/unraid/templates/my-ollama.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/killamfkr/ollama-cursor-agent/main/unraid/icon.svg</Icon>
+  <ExtraParams/>
+  <PostArgs/>
+  <Config Name="Ollama API" Target="11434" Default="11434" Mode="tcp" Description="Ollama REST API" Type="Port" Display="always" Required="true" Mask="false">11434</Config>
+  <Config Name="Models" Target="/root/.ollama" Default="/mnt/user/appdata/ollama-cursor-agent/ollama" Mode="rw" Description="Downloaded models and Ollama state" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/ollama-cursor-agent/ollama</Config>
+</Container>

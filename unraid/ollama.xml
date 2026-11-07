@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>ollama</Name>
+  <Repository>ollama/ollama:latest</Repository>
+  <Registry>https://hub.docker.com/r/ollama/ollama</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>bash</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/killamfkr/ollama-cursor-agent/tree/main/unraid</Support>
+  <Project>https://github.com/killamfkr/ollama-cursor-agent</Project>
+  <Overview>Ollama — local LLM runtime for the Ollama Cursor Agent stack on Unraid.[br][br]After install, open the container console and run: [b]ollama pull qwen2.5-coder:7b[/b][br][br]Set [b]Ollama Host[/b] to [b]0.0.0.0:11434[/b] so other containers (and the agent template) can reach the API. For NVIDIA GPUs, add [b]--gpus all[/b] under Extra Parameters (requires NVIDIA Driver + Container Toolkit on Unraid).</Overview>
+  <Category>Tools:Utilities</Category>
+  <WebUI>http://[IP]:[PORT:11434]/</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/killamfkr/ollama-cursor-agent/main/unraid/ollama.xml</TemplateURL>
+  <Icon>https://ollama.com/public/apple-touch-icon.png</Icon>
+  <ExtraParams>--restart unless-stopped</ExtraParams>
+  <Date>2026-11-07</Date>
+  <Changes>Initial Unraid template for Ollama Cursor Agent stack.</Changes>
+  <PostArgs/>
+  <CPUset/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires/>
+  <Config Name="Ollama API" Target="11434" Default="11434" Mode="tcp" Description="Ollama HTTP API (used by ollama-cursor-agent)" Type="Port" Display="always" Required="true" Mask="false">11434</Config>
+  <Config Name="Models" Target="/root/.ollama" Default="/mnt/user/appdata/ollama" Mode="rw" Description="Downloaded models and Ollama state" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/ollama</Config>
+  <Config Name="Ollama Host" Target="OLLAMA_HOST" Default="0.0.0.0:11434" Mode="" Description="Listen address. Use 0.0.0.0:11434 so the agent container can connect via your server IP." Type="Variable" Display="always" Required="true" Mask="false">0.0.0.0:11434</Config>
+  <Config Name="Origins (CORS)" Target="OLLAMA_ORIGINS" Default="*" Mode="" Description="Allowed browser origins (* for local LAN tools)" Type="Variable" Display="advanced" Required="false" Mask="false">*</Config>
+</Container>
