@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ollama Cursor Agent</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="logo">◈</span>
+          <div>
+            <h1>Ollama Agent</h1>
+            <p>Local Cursor-style coding agent</p>
+          </div>
+        </div>
+        <label class="field">
+          <span>Model</span>
+          <select id="modelSelect"></select>
+        </label>
+        <button id="refreshModels" class="btn secondary">Refresh models</button>
+        <label class="field">
+          <span>Pull model</span>
+          <div class="row">
+            <input id="pullModel" type="text" placeholder="qwen2.5-coder:7b" />
+            <button id="pullBtn" class="btn secondary">Pull</button>
+          </div>
+        </label>
+        <div id="pullLog" class="pull-log"></div>
+        <div class="status" id="healthStatus">Checking Ollama…</div>
+      </aside>
+      <main class="main">
+        <section class="transcript" id="transcript"></section>
+        <form class="composer" id="composer">
+          <textarea
+            id="prompt"
+            rows="3"
+            placeholder="Describe a coding task for the agent…"
+          ></textarea>
+          <div class="composer-actions">
+            <span id="sessionLabel" class="session-label"></span>
+            <button type="submit" class="btn primary" id="sendBtn">Run agent</button>
+          </div>
+        </form>
+      </main>
+    </div>
+    <script src="/app.js"></script>
+  </body>
+</html>

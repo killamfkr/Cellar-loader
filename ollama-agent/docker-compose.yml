@@ -1,0 +1,37 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      - "11434:11434"
+    # Uncomment for NVIDIA GPU:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    restart: unless-stopped
+
+  agent:
+    build: ./agent
+    container_name: ollama-cursor-agent
+    depends_on:
+      - ollama
+    environment:
+      AGENT_OLLAMA_BASE_URL: http://ollama:11434
+      AGENT_DEFAULT_MODEL: ${AGENT_DEFAULT_MODEL:-qwen2.5-coder:7b}
+      AGENT_WORKSPACE_ROOT: /workspace
+      AGENT_MAX_AGENT_STEPS: ${AGENT_MAX_AGENT_STEPS:-40}
+    volumes:
+      # Mount the project(s) the agent should edit:
+      - ${AGENT_WORKSPACE:-../}:/workspace
+    ports:
+      - "${AGENT_PORT:-8080}:8080"
+    restart: unless-stopped
+
+volumes:
+  ollama_data:

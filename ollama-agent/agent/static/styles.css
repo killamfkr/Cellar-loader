@@ -1,0 +1,237 @@
+:root {
+  --bg: #0f1117;
+  --panel: #161922;
+  --border: #2a2f3a;
+  --text: #e6e9ef;
+  --muted: #9aa3b2;
+  --accent: #6c9eff;
+  --accent-dim: #3d5a99;
+  --tool: #2d333f;
+  --success: #3dd68c;
+  --danger: #ff6b6b;
+  font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  min-height: 100vh;
+}
+
+.sidebar {
+  border-right: 1px solid var(--border);
+  background: var(--panel);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.brand {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+}
+
+.logo {
+  font-size: 1.75rem;
+  color: var(--accent);
+  line-height: 1;
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.brand p {
+  margin: 0.2rem 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.field select,
+.field input,
+.composer textarea {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 0.55rem 0.65rem;
+  font: inherit;
+}
+
+.row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.row input {
+  flex: 1;
+}
+
+.btn {
+  border: 1px solid var(--border);
+  background: var(--tool);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 0.55rem 0.9rem;
+  cursor: pointer;
+  font: inherit;
+}
+
+.btn:hover {
+  border-color: var(--accent-dim);
+}
+
+.btn.primary {
+  background: linear-gradient(135deg, var(--accent), #8b7cff);
+  border-color: transparent;
+  color: #0b0d12;
+  font-weight: 600;
+}
+
+.btn.secondary {
+  font-size: 0.85rem;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pull-log {
+  font-size: 0.75rem;
+  color: var(--muted);
+  max-height: 120px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+.status {
+  margin-top: auto;
+  font-size: 0.8rem;
+  padding: 0.6rem;
+  border-radius: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+
+.status.ok {
+  border-color: rgba(61, 214, 140, 0.4);
+  color: var(--success);
+}
+
+.status.bad {
+  border-color: rgba(255, 107, 107, 0.4);
+  color: var(--danger);
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.transcript {
+  flex: 1;
+  overflow: auto;
+  padding: 1.25rem 1.5rem 6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.bubble {
+  max-width: 900px;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.bubble.user {
+  align-self: flex-end;
+  background: #1c2433;
+  border-color: var(--accent-dim);
+}
+
+.bubble.assistant {
+  align-self: flex-start;
+}
+
+.bubble.tool {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+  background: #12151c;
+  color: var(--muted);
+}
+
+.bubble.tool strong {
+  color: var(--accent);
+}
+
+.bubble.thinking {
+  color: var(--muted);
+  font-style: italic;
+  border-style: dashed;
+}
+
+.composer {
+  position: sticky;
+  bottom: 0;
+  border-top: 1px solid var(--border);
+  background: rgba(15, 17, 23, 0.95);
+  backdrop-filter: blur(8px);
+  padding: 1rem 1.5rem 1.25rem;
+}
+
+.composer textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 72px;
+}
+
+.composer-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.6rem;
+}
+
+.session-label {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+@media (max-width: 900px) {
+  .app {
+    grid-template-columns: 1fr;
+  }
+  .sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}
