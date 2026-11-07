@@ -23,15 +23,17 @@ flowchart LR
 
 ## Unraid
 
-Private **Community Applications** templates (Ollama + agent containers): [`unraid/INSTALL.md`](unraid/INSTALL.md).
+Unraid install guide: [`unraid/INSTALL.md`](unraid/INSTALL.md)
 
-One-liner on the Unraid terminal:
+**Private Apps** (recommended):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/killamfkr/Cellar-loader/main/ollama-agent/unraid/install-templates.sh | bash
 ```
 
-Then **Apps → Private Apps** → install **ollama**, then **ollama-cursor-agent**.
+Then **Apps → Private Apps** → **ollama**, then **ollama-cursor-agent**.
+
+**Compose stack** (optional): `unraid/setup.sh` — agent image `ghcr.io/killamfkr/ollama-cursor-agent:latest`.
 
 ## Quick start (Docker Compose)
 
