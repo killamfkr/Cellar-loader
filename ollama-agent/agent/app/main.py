@@ -4,7 +4,9 @@ import json
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -12,9 +14,21 @@ from pydantic import BaseModel, Field
 
 from .agent import run_agent_turn, store, stream_agent_turn
 from .config import settings
+from .git_ops import configure_origin_from_settings, ensure_git_identity
+from .github_client import GitHubClient, GitHubError
+from .github_jobs import job_store
+from .github_webhook import handle_github_event, verify_signature
 from .ollama_client import OllamaClient
 
-app = FastAPI(title="Ollama Cursor Agent", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await ensure_git_identity()
+    await configure_origin_from_settings()
+    yield
+
+
+app = FastAPI(title="Ollama Cursor Agent", version="0.2.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -35,6 +49,12 @@ class PullRequest(BaseModel):
     model: str
 
 
+class RunIssueRequest(BaseModel):
+    issue_number: int
+    model: str | None = None
+    instruction: str = ""
+
+
 @app.get("/api/health")
 async def health() -> dict[str, Any]:
     ollama = OllamaClient()
@@ -51,7 +71,84 @@ async def get_config() -> dict[str, Any]:
         "default_model": settings.default_model,
         "workspace_root": settings.workspace_root,
         "max_agent_steps": settings.max_agent_steps,
+        "github_repo": settings.github_repo or None,
+        "github_default_branch": settings.github_default_branch,
+        "github_trigger_label": settings.github_trigger_label,
+        "github_comment_trigger": settings.github_comment_trigger,
+        "public_base_url": settings.public_base_url or None,
     }
+
+
+@app.get("/api/github/status")
+async def github_status() -> dict[str, Any]:
+    gh = GitHubClient()
+    if not gh.configured:
+        return {
+            "configured": False,
+            "hint": "Set AGENT_GITHUB_TOKEN and AGENT_GITHUB_REPO on the agent container",
+        }
+    try:
+        auth = await gh.verify_auth()
+        return {"configured": True, **auth}
+    except GitHubError as e:
+        return {"configured": True, "ok": False, "error": e.message, "status": e.status}
+
+
+@app.get("/api/github/issues")
+async def github_issues() -> dict[str, Any]:
+    gh = GitHubClient()
+    try:
+        return {"issues": await gh.list_open_issues()}
+    except GitHubError as e:
+        raise HTTPException(status_code=e.status, detail=e.message) from e
+
+
+@app.post("/api/github/run-issue")
+async def github_run_issue(body: RunIssueRequest) -> dict[str, Any]:
+    job = await job_store.enqueue_issue(
+        body.issue_number, model=body.model, extra_instruction=body.instruction
+    )
+    return {
+        "job_id": job.id,
+        "issue_number": job.issue_number,
+        "branch": job.branch,
+        "status": job.status,
+    }
+
+
+@app.get("/api/github/jobs")
+async def github_jobs() -> dict[str, Any]:
+    return {
+        "jobs": [
+            {
+                "id": j.id,
+                "issue_number": j.issue_number,
+                "title": j.title,
+                "status": j.status,
+                "branch": j.branch,
+                "session_id": j.session_id,
+                "pr_url": j.pr_url,
+                "error": j.error,
+                "created_at": j.created_at,
+                "finished_at": j.finished_at,
+            }
+            for j in job_store.list_jobs()
+        ]
+    }
+
+
+@app.post("/api/github/webhook")
+async def github_webhook(request: Request) -> dict[str, Any]:
+    body = await request.body()
+    sig = request.headers.get("X-Hub-Signature-256")
+    if not verify_signature(body, sig):
+        raise HTTPException(status_code=401, detail="Invalid webhook signature")
+    event = request.headers.get("X-GitHub-Event", "")
+    try:
+        payload = json.loads(body.decode("utf-8"))
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=400, detail="Invalid JSON") from e
+    return await handle_github_event(event, payload)
 
 
 @app.get("/api/models")

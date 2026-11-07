@@ -155,5 +155,110 @@ document.getElementById("composer").addEventListener("submit", async (e) => {
   }
 });
 
+async function loadGithub() {
+  const el = document.getElementById("githubStatus");
+  try {
+    const r = await fetch("/api/github/status");
+    const data = await r.json();
+    if (!data.configured) {
+      el.textContent = "GitHub not configured (set GITHUB_TOKEN + GITHUB_REPO)";
+      el.className = "status bad";
+      return;
+    }
+    if (data.ok === false) {
+      el.textContent = `GitHub error: ${data.error || "auth failed"}`;
+      el.className = "status bad";
+      return;
+    }
+    const repo = data.repo?.full_name || "connected";
+    el.textContent = `GitHub: ${data.login} @ ${repo}`;
+    el.className = "status ok";
+  } catch (e) {
+    el.textContent = `GitHub check failed: ${e.message}`;
+    el.className = "status bad";
+  }
+}
+
+async function loadJobs() {
+  const panel = document.getElementById("jobsPanel");
+  const r = await fetch("/api/github/jobs");
+  const data = await r.json();
+  const jobs = data.jobs || [];
+  if (!jobs.length) {
+    panel.textContent = "";
+    return;
+  }
+  panel.innerHTML = jobs
+    .slice(0, 5)
+    .map(
+      (j) =>
+        `#${j.issue_number} [${j.status}] ${j.branch || ""} ${
+          j.pr_url ? `<a href="${j.pr_url}">PR</a>` : ""
+        }`
+    )
+    .join("<br/>");
+}
+
+async function loadIssues() {
+  const list = document.getElementById("issueList");
+  list.innerHTML = "<li>Loading…</li>";
+  try {
+    const r = await fetch("/api/github/issues");
+    const data = await r.json();
+    const issues = data.issues || [];
+    if (!issues.length) {
+      list.innerHTML = "<li>No open issues</li>";
+      return;
+    }
+    list.innerHTML = "";
+    for (const issue of issues) {
+      const li = document.createElement("li");
+      const title = document.createElement("span");
+      title.textContent = `#${issue.number} ${issue.title}`;
+      const btn = document.createElement("button");
+      btn.className = "btn secondary";
+      btn.textContent = "Run";
+      btn.onclick = () => runIssue(issue.number, issue.title);
+      li.appendChild(title);
+      li.appendChild(btn);
+      list.appendChild(li);
+    }
+  } catch (e) {
+    list.innerHTML = `<li>${e.message}</li>`;
+  }
+}
+
+async function runIssue(number, title) {
+  if (!number) return;
+  addBubble(
+    "user",
+    `Run GitHub agent on issue #${number}${title ? ": " + title : ""}`
+  );
+  const r = await fetch("/api/github/run-issue", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ issue_number: Number(number) }),
+  });
+  const data = await r.json();
+  if (!r.ok) {
+    addBubble("assistant", `Failed: ${JSON.stringify(data)}`);
+    return;
+  }
+  addBubble(
+    "assistant",
+    `Queued job ${data.job_id} on branch ${data.branch}. Watch sidebar jobs or issue comments.`
+  );
+  await loadJobs();
+  setInterval(loadJobs, 5000);
+}
+
+document.getElementById("refreshIssues").addEventListener("click", loadIssues);
+document.getElementById("runIssueBtn").addEventListener("click", () => {
+  const n = document.getElementById("issueNumber").value;
+  runIssue(n);
+});
+
 loadHealth();
 loadModels();
+loadGithub();
+loadJobs();

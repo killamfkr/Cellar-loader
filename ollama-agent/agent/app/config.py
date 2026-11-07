@@ -12,5 +12,18 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8080
 
+    # GitHub (PAT or fine-grained token with repo + issues scope)
+    github_token: str = ""
+    github_repo: str = ""  # owner/name
+    github_default_branch: str = "main"
+    github_branch_prefix: str = "cursor/"
+    github_branch_suffix: str = "local"
+    github_webhook_secret: str = ""
+    github_trigger_label: str = "agent"
+    github_comment_trigger: str = "@agent"
+
+    # Public URL for webhook setup docs (optional)
+    public_base_url: str = ""
+
 
 settings = Settings()

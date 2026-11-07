@@ -11,6 +11,15 @@ from pathlib import Path
 from typing import Any
 
 from .config import settings
+from .git_ops import (
+    default_feature_branch,
+    git_checkout_branch,
+    git_commit,
+    git_fetch,
+    git_push,
+    git_status,
+)
+from .github_client import GitHubClient, GitHubError
 
 
 def _resolve_safe(path: str) -> Path:
@@ -107,6 +116,98 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
                 },
             },
             "required": ["command"],
+        },
+    },
+    {
+        "name": "github_get_issue",
+        "description": "Fetch a GitHub issue (title, body, comments) for the configured repo.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "number": {"type": "integer", "description": "Issue number"},
+            },
+            "required": ["number"],
+        },
+    },
+    {
+        "name": "github_post_comment",
+        "description": "Post a comment on a GitHub issue or PR by number.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "number": {"type": "integer"},
+                "body": {"type": "string"},
+            },
+            "required": ["number", "body"],
+        },
+    },
+    {
+        "name": "github_create_pull_request",
+        "description": "Open a pull request on GitHub (after pushing the branch).",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "title": {"type": "string"},
+                "body": {"type": "string"},
+                "head_branch": {
+                    "type": "string",
+                    "description": "Branch you pushed (defaults to current git branch)",
+                },
+                "base_branch": {
+                    "type": "string",
+                    "description": "Target branch (default from config, usually main)",
+                },
+                "draft": {"type": "boolean"},
+            },
+            "required": ["title", "body"],
+        },
+    },
+    {
+        "name": "git_status",
+        "description": "Show current git branch and uncommitted changes.",
+        "parameters": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "git_checkout_branch",
+        "description": "Create or checkout a feature branch (use cursor/ prefix style names).",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "branch": {
+                    "type": "string",
+                    "description": "Branch name; omit to auto-generate from task title",
+                },
+                "title_hint": {
+                    "type": "string",
+                    "description": "Used to auto-name branch when branch omitted",
+                },
+            },
+        },
+    },
+    {
+        "name": "git_commit",
+        "description": "Stage and commit changes. Use paths to limit staged files.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "message": {"type": "string"},
+                "paths": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Optional paths to stage; default all changes",
+                },
+            },
+            "required": ["message"],
+        },
+    },
+    {
+        "name": "git_push",
+        "description": "Push current (or named) branch to origin on GitHub.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "branch": {"type": "string"},
+            },
         },
     },
 ]
@@ -271,6 +372,58 @@ async def execute_tool(name: str, arguments: dict[str, Any]) -> str:
             return await _run_shell(
                 arguments["command"], arguments.get("description")
             )
+        if name == "github_get_issue":
+            try:
+                gh = GitHubClient()
+                issue = await gh.get_issue(int(arguments["number"]))
+                return json.dumps(issue, indent=2)
+            except GitHubError as e:
+                return json.dumps({"error": e.message, "status": e.status})
+        if name == "github_post_comment":
+            gh = GitHubClient()
+            res = await gh.create_comment(int(arguments["number"]), arguments["body"])
+            return json.dumps(
+                {"ok": True, "html_url": res.get("html_url"), "id": res.get("id")}
+            )
+        if name == "github_create_pull_request":
+            gh = GitHubClient()
+            head = arguments.get("head_branch")
+            if not head:
+                st = await git_status()
+                head = st["branch"]
+            pr = await gh.create_pull_request(
+                title=arguments["title"],
+                body=arguments["body"],
+                head=head,
+                base=arguments.get("base_branch"),
+                draft=bool(arguments.get("draft", False)),
+            )
+            return json.dumps(
+                {
+                    "number": pr.get("number"),
+                    "html_url": pr.get("html_url"),
+                    "title": pr.get("title"),
+                    "head": head,
+                },
+                indent=2,
+            )
+        if name == "git_status":
+            return json.dumps(await git_status(), indent=2)
+        if name == "git_checkout_branch":
+            branch = arguments.get("branch")
+            if not branch:
+                hint = arguments.get("title_hint") or "agent-task"
+                branch = default_feature_branch(hint)
+            await git_fetch()
+            st = await git_checkout_branch(branch)
+            return json.dumps({"branch": branch, **st}, indent=2)
+        if name == "git_commit":
+            paths = arguments.get("paths")
+            res = await git_commit(arguments["message"], paths=paths)
+            return json.dumps(res, indent=2)
+        if name == "git_push":
+            res = await git_push(arguments.get("branch"))
+            return json.dumps(res, indent=2)
         return json.dumps({"error": f"Unknown tool: {name}"})
     except PermissionError as e:
         return json.dumps({"error": str(e)})

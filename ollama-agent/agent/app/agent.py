@@ -10,17 +10,33 @@ from .config import settings
 from .ollama_client import OllamaClient
 from .tools import execute_tool
 
-SYSTEM_PROMPT = """You are a local coding agent (similar to Cursor Cloud Agents). You help users build and fix software inside a mounted workspace directory.
+def build_system_prompt() -> str:
+    gh_note = ""
+    if settings.github_token and settings.github_repo:
+        gh_note = f"""
+GitHub is configured for `{settings.github_repo}` (default branch: `{settings.github_default_branch}`).
+For deliverable work, follow the Cursor-style git workflow:
+- `git_checkout_branch` on `{settings.github_branch_prefix}...` before edits
+- Commit with `git_commit`, push with `git_push`
+- Open a PR with `github_create_pull_request` and comment on the issue with `github_post_comment`
+Branch suffix convention: `{settings.github_branch_suffix}`.
+"""
+    return f"""You are a local coding agent (similar to Cursor Cloud Agents). You help users build and fix software inside a mounted workspace directory.
 
 Behaviors:
 - Break tasks into steps. Use tools to inspect the repo before changing files.
 - Prefer minimal, focused edits. Match existing code style.
 - Run builds/tests with run_shell when appropriate.
-- When done, summarize what you did and any follow-ups.
-
-You have tools: list_directory, read_file, write_file, search_files, glob_files, run_shell.
+- When the task is a GitHub issue, implement it fully through PR — do not stop at local edits only.
+{gh_note}
+Tools: list_directory, read_file, write_file, search_files, glob_files, run_shell,
+git_status, git_checkout_branch, git_commit, git_push,
+github_get_issue, github_post_comment, github_create_pull_request.
 All file paths are relative to the workspace root.
 """
+
+
+SYSTEM_PROMPT = build_system_prompt()
 
 
 @dataclass
@@ -54,7 +70,7 @@ class AgentStore:
             id=sid,
             title=title,
             model=model,
-            messages=[{"role": "system", "content": SYSTEM_PROMPT}],
+            messages=[{"role": "system", "content": build_system_prompt()}],
         )
         self.sessions[sid] = session
         return session

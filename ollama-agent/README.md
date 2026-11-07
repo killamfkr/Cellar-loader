@@ -11,6 +11,8 @@ flowchart LR
   Browser[Web UI :8080] --> API[FastAPI Agent]
   API --> Ollama[Ollama :11434]
   API --> WS["/workspace volume"]
+  API --> GH[GitHub API]
+  GWebhook[GitHub Webhooks] --> API
 ```
 
 | Component | Role |
@@ -46,6 +48,72 @@ Or edit `.env`:
 ```env
 AGENT_WORKSPACE=/path/to/your/repo
 ```
+
+## GitHub workflow (like Cursor Cloud Agents)
+
+The agent can **branch, commit, push, open PRs, and comment on issues** — similar to a cloud agent on GitHub — using a **local** Ollama model.
+
+### 1. Configure credentials
+
+In `.env`:
+
+```env
+GITHUB_TOKEN=ghp_...          # classic PAT or fine-grained token
+GITHUB_REPO=your-user/your-repo
+GITHUB_DEFAULT_BRANCH=main
+GITHUB_BRANCH_PREFIX=cursor/
+GITHUB_BRANCH_SUFFIX=local
+```
+
+Token scopes: **repo** (or fine-grained: contents, pull requests, issues — read/write).
+
+Mount a **clone** of that repo at `AGENT_WORKSPACE` (or use `../` if compose lives inside the repo).
+
+### 2. Run from the UI
+
+Open the **GitHub** section in the sidebar → **Load open issues** → **Run** on an issue.  
+The agent will:
+
+1. Comment on the issue that it started  
+2. Create `cursor/<slug>-local` (configurable)  
+3. Implement, test, commit, push  
+4. Open a PR and post a summary comment  
+
+### 3. Trigger from GitHub (webhooks)
+
+Expose port `8080` (or set `PUBLIC_BASE_URL` for docs). Add a webhook on the repo:
+
+| Setting | Value |
+|---------|--------|
+| Payload URL | `https://<your-host>/api/github/webhook` |
+| Secret | same as `GITHUB_WEBHOOK_SECRET` |
+| Events | **Issues**, **Issue comments** |
+
+Triggers:
+
+- Add label **`agent`** to an issue (default; change with `GITHUB_TRIGGER_LABEL`)
+- Comment **`@agent`** on an issue (`GITHUB_COMMENT_TRIGGER`)
+
+### 4. API
+
+```bash
+curl -s http://localhost:8080/api/github/run-issue \
+  -H 'Content-Type: application/json' \
+  -d '{"issue_number": 42}'
+```
+
+```bash
+curl -s http://localhost:8080/api/github/jobs
+```
+
+### Agent GitHub tools
+
+| Tool | Purpose |
+|------|---------|
+| `git_checkout_branch` | Feature branch from default branch |
+| `git_commit` / `git_push` | Ship changes |
+| `github_create_pull_request` | Open PR |
+| `github_get_issue` / `github_post_comment` | Read context, notify humans |
 
 ## Recommended models
 
