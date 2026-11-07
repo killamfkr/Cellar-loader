@@ -21,7 +21,19 @@ flowchart LR
 | `agent` | Agent loop, tools, REST + SSE API, static UI |
 | `/workspace` | Your repo — the agent can only touch files under this mount |
 
-## Quick start
+## Unraid
+
+Private **Community Applications** templates (Ollama + agent containers): [`unraid/INSTALL.md`](unraid/INSTALL.md).
+
+One-liner on the Unraid terminal:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/killamfkr/Cellar-loader/main/ollama-agent/unraid/install-templates.sh | bash
+```
+
+Then **Apps → Private Apps** → install **ollama**, then **ollama-cursor-agent**.
+
+## Quick start (Docker Compose)
 
 ```bash
 cd ollama-agent
