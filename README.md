@@ -1,7 +1,5 @@
 # Ollama Cursor Agent
 
-**Repository:** [github.com/killamfkr/ollama-cursor-agent](https://github.com/killamfkr/ollama-cursor-agent)
-
 A **Dockerized, local coding agent** inspired by [Cursor Cloud Agents](https://cursor.com/docs/cloud-agent): chat-driven tasks, multi-step tool use (read/write files, search, shell), and a web UI — backed entirely by **[Ollama](https://ollama.com)** on your machine.
 
 No cloud LLM API keys required.
